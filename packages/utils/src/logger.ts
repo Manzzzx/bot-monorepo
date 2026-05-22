@@ -38,7 +38,7 @@ export function createRootLogger(options: RootLoggerOptions = {}): Logger {
       options: {
         colorize: !noColor,
         singleLine: env === 'production',
-        translateTime: 'SYS:standard',
+        translateTime: 'SYS:yyyy-mm-dd HH:MM:ss.l o',
         ignore: 'pid,hostname',
         messageFormat:
           '[{platform}] {feature} {status} → {msg} traceId={traceId} eventId={eventId}',

@@ -5,7 +5,19 @@ import { fileURLToPath } from 'node:url';
 
 const projectRoot = resolve(dirname(fileURLToPath(import.meta.url)), '..', '..', '..');
 
-loadDotenv({ path: resolve(projectRoot, '.env'), quiet: true });
+const nodeEnv = process.env.NODE_ENV ?? 'development';
+const envCandidates = [
+  `.env.${nodeEnv}.local`,
+  nodeEnv !== 'test' ? '.env.local' : null,
+  `.env.${nodeEnv}`,
+  '.env',
+].filter((value): value is string => value !== null);
+
+for (const candidate of envCandidates) {
+  loadDotenv({ path: resolve(projectRoot, candidate), quiet: true });
+}
+
+process.env.TZ = process.env.TZ ?? 'Asia/Jakarta';
 
 const rawDbUrl = process.env.DATABASE_URL;
 if (rawDbUrl?.startsWith('file:')) {

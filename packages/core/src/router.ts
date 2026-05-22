@@ -45,6 +45,20 @@ export function createRouter(app: AppContext, options: RouterOptions = {}): Rout
         asRouterMiddleware(errorBoundary(app)),
         asRouterMiddleware(withTraceId()),
         async (currentCtx, next) => {
+          currentCtx.logger.info(
+            {
+              status: 'ok',
+              platform: currentCtx.platform,
+              chatId: currentCtx.chatId,
+              userId: currentCtx.userId,
+              isGroup: currentCtx.isGroup,
+              text: currentCtx.text.slice(0, 120),
+            },
+            'inbound message',
+          );
+          await next();
+        },
+        async (currentCtx, next) => {
           const parsed = parseInput(currentCtx.text);
           if (!parsed) {
             await Promise.resolve(app.bus.emit('message', currentCtx));
@@ -64,11 +78,28 @@ export function createRouter(app: AppContext, options: RouterOptions = {}): Rout
           if (!registered) {
             if (unknownCommand === 'reply')
               await currentCtx.reply(`Unknown command: ${commandName}`);
+            currentCtx.logger.info(
+              { status: 'rejected', command: commandName },
+              'command not found',
+            );
             return;
           }
 
           currentCtx.matchedCommand = registered;
+          currentCtx.logger.info(
+            {
+              status: 'ok',
+              command: registered.command.name,
+              feature: registered.feature.name,
+              category: registered.category,
+            },
+            'command matched',
+          );
           await compose<RouterCtx>(commandPipeline(registered))(currentCtx);
+          currentCtx.logger.info(
+            { status: 'ok', command: registered.command.name },
+            'command done',
+          );
         },
       ]);
 
