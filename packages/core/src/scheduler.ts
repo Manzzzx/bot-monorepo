@@ -5,6 +5,8 @@ import { reminderRepo } from '@bot/db';
 export interface SchedulerOptions {
   cronExpression?: string;
   batchSize?: number;
+  /** Reminders stuck in `firing` longer than this are reset to `pending`. */
+  stuckRecoveryMs?: number;
   timer?: { setTimeout: typeof setTimeout; clearTimeout: typeof clearTimeout };
 }
 
@@ -16,6 +18,7 @@ interface PendingTimer {
 export class SchedulerImpl implements Scheduler {
   private readonly cronExpression: string;
   private readonly batchSize: number;
+  private readonly stuckRecoveryMs: number;
   private readonly timer: { setTimeout: typeof setTimeout; clearTimeout: typeof clearTimeout };
   private cron: Cron | null = null;
   private readonly pending = new Map<string, PendingTimer>();
@@ -26,6 +29,7 @@ export class SchedulerImpl implements Scheduler {
   ) {
     this.cronExpression = options.cronExpression ?? '*/30 * * * * *';
     this.batchSize = options.batchSize ?? 50;
+    this.stuckRecoveryMs = options.stuckRecoveryMs ?? 5 * 60_000;
     this.timer = options.timer ?? { setTimeout, clearTimeout };
   }
 
@@ -47,6 +51,8 @@ export class SchedulerImpl implements Scheduler {
 
   async tick(): Promise<void> {
     try {
+      await this.recoverStuck();
+
       const due = await reminderRepo.claimDue(
         this.app.db as Parameters<typeof reminderRepo.claimDue>[0],
         this.batchSize,
@@ -69,6 +75,26 @@ export class SchedulerImpl implements Scheduler {
 
   async catchup(): Promise<void> {
     await this.tick();
+  }
+
+  private async recoverStuck(): Promise<void> {
+    try {
+      const result = await reminderRepo.recoverStuck(
+        this.app.db as Parameters<typeof reminderRepo.recoverStuck>[0],
+        this.stuckRecoveryMs,
+      );
+      if (result.count > 0) {
+        this.app.logger.warn(
+          { status: 'ok', recovered: result.count },
+          'Scheduler recovered stuck reminders',
+        );
+      }
+    } catch (error) {
+      this.app.logger.error(
+        { err: error, status: 'error' },
+        'Scheduler stuck recovery failed',
+      );
+    }
   }
 
   async scheduleOnce(at: Date, key: string, payload: unknown): Promise<void> {

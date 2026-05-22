@@ -12,6 +12,8 @@ export interface ShutdownOptions {
   inFlight?: () => Promise<void>;
   inFlightTimeoutMs?: number;
   exit?: (code: number) => void;
+  /** Exit code to use when shutdown completes. Defaults to 0 (graceful). */
+  exitCode?: number;
 }
 
 async function withTimeout<T>(
@@ -35,8 +37,9 @@ export async function performShutdown(options: ShutdownOptions): Promise<void> {
   const { logger, prisma, scheduler, adapters } = options;
   const inFlightTimeoutMs = options.inFlightTimeoutMs ?? 10_000;
   const exit = options.exit ?? ((code: number) => process.exit(code));
+  const exitCode = options.exitCode ?? 0;
 
-  logger.info({ status: 'ok' }, 'Shutdown initiated');
+  logger.info({ status: 'ok', exitCode }, 'Shutdown initiated');
 
   adapters.wa?.pause();
   adapters.tele?.pause();
@@ -70,7 +73,7 @@ export async function performShutdown(options: ShutdownOptions): Promise<void> {
     logger.warn({ err: error, status: 'rejected' }, 'Log flush failed');
   }
 
-  exit(0);
+  exit(exitCode);
 }
 
 export interface InstallSignalHandlersOptions extends ShutdownOptions {
@@ -80,14 +83,41 @@ export interface InstallSignalHandlersOptions extends ShutdownOptions {
 export function installSignalHandlers(options: InstallSignalHandlersOptions): () => void {
   const signals = options.signals ?? (['SIGTERM', 'SIGINT'] as NodeJS.Signals[]);
   let triggered = false;
+
   const handler = (signal: NodeJS.Signals) => {
     if (triggered) return;
     triggered = true;
     options.logger.info({ status: 'ok', signal }, `Received ${signal}, shutting down`);
-    void performShutdown(options);
+    void performShutdown({ ...options, exitCode: 0 });
   };
+
+  const onUncaught = (error: unknown) => {
+    options.logger.fatal(
+      { err: error, status: 'fatal' },
+      'Uncaught exception, initiating shutdown',
+    );
+    if (triggered) return;
+    triggered = true;
+    void performShutdown({ ...options, exitCode: 1 });
+  };
+
+  const onUnhandled = (reason: unknown) => {
+    options.logger.fatal(
+      { err: reason, status: 'fatal' },
+      'Unhandled rejection, initiating shutdown',
+    );
+    if (triggered) return;
+    triggered = true;
+    void performShutdown({ ...options, exitCode: 1 });
+  };
+
   for (const signal of signals) process.on(signal, handler);
+  process.on('uncaughtException', onUncaught);
+  process.on('unhandledRejection', onUnhandled);
+
   return () => {
     for (const signal of signals) process.off(signal, handler);
+    process.off('uncaughtException', onUncaught);
+    process.off('unhandledRejection', onUnhandled);
   };
 }

@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import type { AppConfig as ContractAppConfig } from '@bot/contracts';
 
 export const nodeEnvValues = ['development', 'production', 'test'] as const;
 export const logLevelValues = ['trace', 'debug', 'info', 'warn', 'error'] as const;
@@ -44,7 +45,16 @@ export const ConfigSchema = z
     }
   });
 
-export type AppConfig = z.infer<typeof ConfigSchema>;
+// Compile-time guard: zod schema output must satisfy the AppConfig contract.
+type _SchemaMatchesContract = z.infer<typeof ConfigSchema> extends ContractAppConfig
+  ? ContractAppConfig extends z.infer<typeof ConfigSchema>
+    ? true
+    : false
+  : false;
+const _typeCheck: _SchemaMatchesContract = true;
+void _typeCheck;
+
+export type AppConfig = ContractAppConfig;
 export type ConfigEnv = Record<string, string | boolean | number | undefined>;
 
 export function loadConfig(env: ConfigEnv = process.env): AppConfig {

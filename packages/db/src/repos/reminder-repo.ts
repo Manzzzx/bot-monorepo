@@ -49,6 +49,18 @@ export const reminderRepo = {
     });
   },
 
+  /**
+   * Reset reminders stuck in `firing` longer than `staleMs` (process crashed
+   * mid-fire) back to `pending` so the next claim cycle picks them up.
+   */
+  recoverStuck(prisma: AppPrismaClient, staleMs: number, now = new Date()) {
+    const cutoff = new Date(now.getTime() - staleMs);
+    return prisma.reminder.updateMany({
+      where: { status: 'firing', updatedAt: { lt: cutoff } },
+      data: { status: 'pending' },
+    });
+  },
+
   markDone(prisma: PrismaRepoClient, id: string) {
     return prisma.reminder.update({
       where: { id },

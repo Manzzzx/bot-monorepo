@@ -1,4 +1,3 @@
-import { flushLogs } from '@bot/utils';
 import type { AppContext, Middleware } from '@bot/contracts';
 import { UserFacingError } from '../errors.js';
 
@@ -9,7 +8,14 @@ export function errorBoundary(app: Pick<AppContext, 'logger'>): Middleware {
     } catch (error) {
       if (error instanceof UserFacingError) {
         ctx.logger.warn({ err: error, status: 'rejected', traceId: ctx.traceId }, error.message);
-        await ctx.reply(error.userMessage);
+        try {
+          await ctx.reply(error.userMessage);
+        } catch (replyError) {
+          ctx.logger.warn(
+            { err: replyError, status: 'rejected', traceId: ctx.traceId },
+            'Failed to reply with user-facing error',
+          );
+        }
         return;
       }
 
@@ -20,15 +26,13 @@ export function errorBoundary(app: Pick<AppContext, 'logger'>): Middleware {
       );
 
       try {
-        await flushLogs(app.logger);
-      } catch (flushError) {
+        await ctx.reply(`Internal error. Trace: ${ctx.traceId}`);
+      } catch (replyError) {
         app.logger.warn(
-          { err: flushError, status: 'error', traceId: ctx.traceId },
-          'Failed to flush logs',
+          { err: replyError, status: 'rejected', traceId: ctx.traceId },
+          'Failed to send error reply',
         );
       }
-
-      await ctx.reply(`Internal error. Trace: ${ctx.traceId}`);
     }
   };
 }

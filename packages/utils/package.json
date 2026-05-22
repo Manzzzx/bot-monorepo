@@ -17,5 +17,8 @@
     "test": "vitest run --passWithNoTests",
     "test:coverage": "vitest run --coverage --passWithNoTests",
     "lint": "eslint . --max-warnings=0"
+  },
+  "dependencies": {
+    "@bot/contracts": "^0.0.0"
   }
 }

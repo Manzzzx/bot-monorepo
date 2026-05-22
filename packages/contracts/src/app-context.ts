@@ -15,11 +15,11 @@ export interface AppConfig {
   DATABASE_URL: string;
   AUTH_ENCRYPTION_KEY: string;
   WA_ENABLED: boolean;
-  OWNER_WA?: string;
+  OWNER_WA?: string | undefined;
   WA_RATE_MIN_TIME_MS: number;
   TELE_ENABLED: boolean;
-  TELEGRAM_BOT_TOKEN?: string;
-  OWNER_TG?: string;
+  TELEGRAM_BOT_TOKEN?: string | undefined;
+  OWNER_TG?: string | undefined;
   TELE_RATE_MIN_TIME_MS: number;
 }
 
@@ -48,7 +48,7 @@ export interface CommandRegistry {
 }
 
 export interface EventBus {
-  emit(event: EventName, payload: unknown): void;
+  emit(event: EventName, payload: unknown): Promise<void> | void;
   on(event: EventName, handler: (payload: unknown, app: AppContext) => Promise<void> | void): void;
 }
 
