@@ -7,7 +7,7 @@
 ## 1. Stack
 
 | Layer               | Choice                               |
-| ------------------- | ------------------------------------ | ---- | ------ | ---------------------------------- |
+| ------------------- | ------------------------------------ |
 | Runtime             | Node.js 20+ LTS                      |
 | Language            | TypeScript 5 strict, ESM             |
 | Package manager     | npm workspaces                       |
@@ -18,7 +18,8 @@
 | Scheduler           | `croner`                             |
 | Rate limit          | `bottleneck`                         |
 | Parser              | `yargs-parser`                       |
-| Middleware composer | `koa-compose`                        | `r`n | Logger | `pino`, `pino-pretty`, `pino-roll` |
+| Middleware composer | `koa-compose`                        |
+| Logger              | `pino`, `pino-pretty`, `pino-roll`   |
 | Validation          | `zod`                                |
 | Tests               | `vitest`, `@vitest/coverage-v8`      |
 
@@ -89,6 +90,23 @@ export interface MessageCtx<TRaw = unknown> {
 }
 ```
 
+### Reply Options
+
+```ts
+export interface ReplyButton {
+  label: string;
+  command?: string; // re-dispatched as user input (prefix auto-prepended)
+  url?: string; // external link
+}
+
+export interface ReplyOpts {
+  quote?: boolean;
+  mentions?: string[];
+  media?: MediaRef | ReplyMedia;
+  buttons?: ReplyButton[][]; // ignored on platforms with capabilities.buttons === false
+}
+```
+
 ### Feature Contract
 
 ```ts
@@ -136,15 +154,13 @@ export interface AppContext {
 }
 ```
 
+`AppConfig` is owned by `@bot/contracts` and the zod schema in `@bot/utils` is checked against it at compile time so drift fails the build.
+
 Feature code must use `AppContext` and `MessageCtx`; no global DB singleton import in features.
 
 ## 5. Feature Loader
 
-Scan rules:
-
-- Flat: `features/src/{general,owner,group}/!(_)*.ts`
-- Folder: `features/src/{general,owner,group}/!(_)*/index.ts`
-- Skip: `_*.ts`, `*.test.ts`, `*.spec.ts`
+Static registry in `packages/features/src/_loader.ts`. Each entry maps a category to a feature module; the loader injects guards based on category before registering commands.
 
 Guard injection:
 
@@ -157,7 +173,7 @@ Guard injection:
 Errors:
 
 - Unknown category -> `UnknownCategoryError`.
-- Flat/folder duplicate -> `FeatureConflictError`.
+- Duplicate registration -> `FeatureConflictError`.
 - Command alias/name conflict -> `CommandConflictError`.
 
 ## 6. Router Pipeline
@@ -186,16 +202,17 @@ type Middleware = (ctx: MessageCtx, next: () => Promise<void>) => Promise<void>;
 
 Input examples:
 
-- `!ping`
+- `/ping`
 - `/help ping`
 - `.broadcast --group "hello world"`
 
 Rules:
 
-- Prefixes: `!`, `/`, `.`
-- Regex: `^[!\/.](\S+)\s*(.*)$`
+- Prefixes: `/`, `.`
+- Regex: `^[\/.](\S+)\s*(.*)$`
 - Args/flags parsed by `yargs-parser`.
 - Command aliases resolved by registry.
+- Legacy `!` prefix is rejected (returns `null`); plain text falls through to the `message` event.
 
 ## 8. Database
 
@@ -239,27 +256,9 @@ await prisma.$executeRawUnsafe('PRAGMA foreign_keys = ON;');
 
 ## 9. Reminder Claim Algorithm
 
-Pseudo-flow:
+`reminderRepo.claimDue` runs in a single Prisma transaction: scan due rows, atomically flip each from `pending` to `firing` via conditional `updateMany`, and return only rows where the flip won. Then emit `reminder.fire` per claimed row.
 
-```ts
-const now = new Date();
-const dueIds = await db.reminder.findMany({
-  where: { status: 'pending', dueAt: { lte: now } },
-  orderBy: { dueAt: 'asc' },
-  take: 50,
-  select: { id: true },
-});
-
-await prisma.$transaction(async (tx) => {
-  await tx.reminder.updateMany({
-    where: { id: { in: dueIds.map((x) => x.id) }, status: 'pending' },
-    data: { status: 'firing' },
-  });
-  return tx.reminder.findMany({ where: { id: { in: dueIds.map((x) => x.id) }, status: 'firing' } });
-});
-```
-
-Then emit `reminder.fire` per claimed row.
+Stuck recovery: `reminderRepo.recoverStuck(staleMs)` runs at the start of every scheduler tick. Rows in `firing` whose `updatedAt` is older than `stuckRecoveryMs` (default 5 min) get reset to `pending`, so a process crash mid-fire never strands a reminder.
 
 ## 10. Logger
 
@@ -285,46 +284,50 @@ Consistency requirement:
 
 - Single pino call fans out to terminal and file.
 - Same `eventId` must appear in both.
-- Error/fatal paths call `flushLogs()` before exit or before generic error reply completes.
+- Error/fatal paths flush logs before exit.
+- Per-message error boundary does **not** flush (would block the hot path).
 - `console.*`, `process.stdout.write`, manual `.log` writes are banned outside logger implementation.
+
+Redaction (`redact.paths`): `*.password`, `*.token`, `*.authorization`, `*.cookie`, plus all known config secrets (`AUTH_ENCRYPTION_KEY`, `TELEGRAM_BOT_TOKEN`, `OWNER_WA`, `OWNER_TG`).
 
 ## 11. Rate Limit
 
-`RateLimitRegistry.outbound(platform, chatId)` returns Bottleneck limiter.
+`RateLimitRegistry.outbound(platform, chatId)` returns a Bottleneck limiter.
 
 Defaults:
 
 - WA: `minTime=800`, `maxConcurrent=1`
 - Telegram: `minTime=50`
 
-Adapters must send through limiter.
+Adapters must send through the limiter.
 
 ## 12. Error Model
 
 ```ts
 class BotError extends Error {
   constructor(
-    public code: string,
     message: string,
-    public meta?: object,
+    code = 'BOT_ERROR',
+    options?: { cause?: unknown; details?: Record<string, unknown> },
   ) {
-    super(message);
+    super(message, options?.cause ? { cause: options.cause } : undefined);
   }
 }
 class UserFacingError extends BotError {}
-class GuardRejection extends BotError {}
+class GuardRejection extends UserFacingError {}
 class CommandConflictError extends BotError {}
+class UnknownCategoryError extends BotError {}
+class FeatureConflictError extends BotError {}
 ```
 
 Error boundary:
 
-- `UserFacingError` -> show message.
-- `GuardRejection` -> show guard message.
-- Unknown -> log full stack with traceId/eventId, flush, reply generic code.
+- `UserFacingError` / `GuardRejection` -> reply with the user message.
+- Unknown -> log full stack with `traceId`/`eventId`, reply generic trace code. Flush is left to the global crash handler so per-message errors stay non-blocking.
 
 ## 13. Config
 
-Required env fields:
+Required env fields (zod-validated):
 
 ```ts
 NODE_ENV;
@@ -352,13 +355,14 @@ Cross-validation:
 
 Pterodactyl variables:
 
-| Variable            | Value    |
-| ------------------- | -------- | ---- | ------------------------------ | ----------------------------------------------------------------------- |
-| `INSTALL_BRANCH`    | `deploy` |
-| `AUTO_UPDATE`       | `true`   |
-| `CLOUDFLARE_TUNNEL` | `false`  |
-| `ENABLE_XVFB`       | `false`  |
-| `NPM_PACKAGES`      | empty    | `r`n | `CUSTOM_ENVIRONMENT_VARIABLES` | `NODE_ENV=production;DATABASE_URL=file:/home/container/data/bot.db;...` |
+| Variable                       | Value                                                                   |
+| ------------------------------ | ----------------------------------------------------------------------- |
+| `INSTALL_BRANCH`               | `deploy`                                                                |
+| `AUTO_UPDATE`                  | `true`                                                                  |
+| `CLOUDFLARE_TUNNEL`            | `false`                                                                 |
+| `ENABLE_XVFB`                  | `false`                                                                 |
+| `NPM_PACKAGES`                 | empty                                                                   |
+| `CUSTOM_ENVIRONMENT_VARIABLES` | `NODE_ENV=production;DATABASE_URL=file:/home/container/data/bot.db;...` |
 
 `.bash_profile`:
 
@@ -377,6 +381,7 @@ sqlite3 /home/container/data/bot.db ".backup '/home/container/backups/bot-$(date
 ```
 
 Panel snapshot is acceptable for full-container backup; SQLite `.backup` is preferred for DB-only restore.
+
 CI flow:
 
 1. Push `main`.
@@ -385,21 +390,41 @@ CI flow:
 4. Pterodactyl restart pulls `deploy`.
 5. `.bash_profile` runs `npm start`.
 
-## 15. Testing
+## 15. Crash Handling
+
+`installSignalHandlers` (in `apps/bot/src/shutdown.ts`) wires:
+
+- `SIGTERM` / `SIGINT` -> graceful shutdown, exit code 0.
+- `uncaughtException` / `unhandledRejection` -> log fatal, then graceful shutdown with exit code 1 so the panel can distinguish crash from clean stop.
+
+Shutdown sequence: pause adapters -> stop scheduler -> drain in-flight -> stop adapters -> Prisma `$disconnect` -> flush logs -> `process.exit(code)`.
+
+## 16. Telegram Buttons
+
+`MessageCtx.capabilities.buttons` is `true` on Telegram, `false` on WA. The shared `reply()` helper auto-strips `buttons` on platforms that don't support them, so the same feature code works on both.
+
+Tele specifics:
+
+- `ReplyButton[][]` rows render as a grammY `InlineKeyboard`. Each `command` button is encoded as `cmd:<text>` callback data (truncated to 64 bytes).
+- `bot.on('callback_query:data')` acks the callback fast, then builds a synthetic `MessageCtx` whose `text` is the original command (prefixed with `/` if needed) and re-dispatches via the router.
+- Callback ctx `reply()` calls `editMessageText` so the source message updates in place. Falls back to `sendMessage` for media-only sources or when Telegram rejects the edit.
+
+## 17. Testing
 
 Minimum test areas:
 
-- Parser: prefixes, quoted args, flags.
+- Parser: prefixes, quoted args, flags, legacy `!` rejection.
 - Registry: conflict detection, aliases, category grouping.
 - Middleware: owner/group/cooldown/error boundary.
-- Feature loader: flat/folder scan, guard injection, skip private/test files.
+- Feature loader: registry validation, guard injection, conflict errors.
 - Feature handlers: `createMockCtx()` + reply assertions.
 - DB: SQLite in-memory, reminder claim, WAL setup.
-- Logger: same `eventId` in stdout/file, PII redaction, fatal flush.
+- Scheduler: tick emits per claimed row, stuck recovery resets `firing` rows, scheduleOnce behaves under fake timers.
+- Logger: same `eventId` in stdout/file, secret redaction, fatal flush.
 
 Coverage threshold: 60% initial.
 
-## 16. Implementation Order
+## 18. Implementation Order
 
 1. Root workspace scaffold.
 2. Contracts package.
@@ -408,21 +433,23 @@ Coverage threshold: 60% initial.
 5. Core: parser, middleware, registry, router, event bus.
 6. Feature loader + MVP features.
 7. Adapters WA/Telegram.
-8. Scheduler + reminder integration.
-9. Deploy workflow + Pterodactyl templates.
-10. Tests + acceptance verification.
+8. Scheduler + reminder integration (with stuck-recovery sweep).
+9. Telegram buttons + edit-in-place callback flow.
+10. Deploy workflow + Pterodactyl templates.
+11. Tests + acceptance verification.
 
-## 17. Acceptance Verification Matrix
+## 19. Acceptance Verification Matrix
 
 | Area            | Must verify                                                                        |
 | --------------- | ---------------------------------------------------------------------------------- |
 | Local workspace | `npm install`, `npm run build`, `npm run test`, lint, format.                      |
 | Runtime boot    | `npm run dev`, WA QR, Telegram online, `npm start` boots both adapters.            |
-| Commands        | `ping`, `stats`, `help`, `menu`, `remind`, group commands.                         |
+| Commands        | `/ping`, `/stats`, `/help`, `/menu`, `/remind`, group commands.                    |
 | Access control  | Non-owner rejected for owner commands; group commands reject DM + non-owner.       |
-| Reminder safety | Restart catchup and parallel claim no double-fire via `prisma.$transaction`.       |
+| Reminder safety | Restart catchup; parallel claim no double-fire; stuck `firing` rows recover.       |
 | DB              | SQLite file created, migrations applied, WAL active, auth blob is encrypted bytes. |
 | Deploy          | GH Actions updates `deploy`, panel pulls branch, `.bash_profile` starts bot.       |
-| Logging         | `eventId`/`status` in terminal and file; error/fatal flushed; PII redacted.        |
-| Feature loader  | Flat/folder scan, skip `_*.ts`/tests, conflict and unknown category errors.        |
+| Logging         | `eventId`/`status` in terminal and file; error/fatal flushed; secrets redacted.    |
+| Crash handling  | `uncaughtException` triggers graceful shutdown with exit code 1.                   |
+| Tele buttons    | Inline keyboard renders; click edits message in place; legacy `!` plain text.      |
 | Platform split  | `dev:wa`, `dev:tele`, capabilities set correctly.                                  |

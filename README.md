@@ -1,17 +1,19 @@
 # bot-monorepo
 
-A multi-platform chat bot for **WhatsApp** and **Telegram**, sharing a single command core. Modular by category, persistent on SQLite, and shipped to Pterodactyl from a CI-built `deploy` branch.
+A multi-platform chat bot for **WhatsApp** and **Telegram**, sharing one command core. Modular by category, persistent on SQLite, and shipped to Pterodactyl from a CI-built `deploy` branch.
 
 > [!NOTE]
-> One codebase, two platforms. Write a feature once, route it through `MessageCtx`, and it works on both adapters with the same guards, logging, and rate limits.
+> Write a feature once, route it through `MessageCtx`, and it works on both adapters with the same guards, logging, rate limits, and (where supported) inline buttons.
 
 ## Highlights
 
-- **Multi-platform core** via `MessageCtx` abstraction over Baileys and grammY.
-- **Modular features** by category: `general/`, `owner/`, `group/` with auto-injected guards.
-- **Persistent reminders** with transactional cron claim, no double-fire on restart.
-- **Structured logging** through `pino` dual transport, same `eventId` in stdout and rotated JSON file.
-- **Encrypted WhatsApp auth blob** at rest using `AUTH_ENCRYPTION_KEY`.
+- **Multi-platform core** via `MessageCtx` over Baileys and grammY.
+- **Modular features** by category (`general/`, `owner/`, `group/`) with auto-injected guards.
+- **Persistent reminders** with transactional claim, restart catchup, and stuck-row recovery.
+- **Telegram inline buttons** with edit-in-place callback flow; WA stays text-only via capability flag.
+- **Structured logging** with `pino` dual transport — same `eventId` in stdout and rotated JSON file.
+- **Encrypted WhatsApp auth** at rest using AES-256-GCM + `AUTH_ENCRYPTION_KEY`.
+- **Crash-safe** signal + `uncaughtException` handler with distinct exit codes.
 - **Pterodactyl-ready** deploy via GitHub Actions, `.bash_profile`, and `npm start`.
 
 ## Stack
@@ -37,7 +39,7 @@ apps/
   wa/             # WhatsApp-only entry
   tele/           # Telegram-only entry
 packages/
-  contracts/      # shared types (MessageCtx, Feature, AppContext)
+  contracts/      # shared types (MessageCtx, Feature, AppContext, ReplyButton)
   core/           # router, parser, middleware, scheduler, event bus
   features/       # general/, owner/, group/ feature modules
   adapters/       # WA + Telegram adapter glue
@@ -76,6 +78,20 @@ npm run dev:tele     # Telegram only
 
 On first WhatsApp boot, scan the QR printed in the terminal. Auth state is persisted (encrypted) so subsequent restarts skip the QR.
 
+## Commands
+
+All commands accept either `/` or `.` as prefix on both platforms. Examples: `/ping` or `.ping`.
+
+| Category | Commands                                                     |
+| -------- | ------------------------------------------------------------ |
+| General  | `/ping`, `/stats`, `/help`, `/menu`, `/start`                |
+| General  | `/remind`, `/reminders`, `/cancelreminder`                   |
+| Owner    | `/eval`, `/broadcast`, `/shutdown`                           |
+| Group    | `/kick`, `/mute`, `/antilink`, `/welcome`                    |
+
+> [!TIP]
+> On Telegram, replies attach inline buttons (Refresh, Menu, Back, etc.). Clicking a button edits the source message in place rather than sending a new one. WA stays text-only because `capabilities.buttons` is `false`.
+
 ## Scripts
 
 | Script                                     | Description                                       |
@@ -90,21 +106,25 @@ On first WhatsApp boot, scan the QR printed in the terminal. Auth state is persi
 
 ## Writing a feature
 
-Drop a file into a category folder. Category controls auto-guards.
+Drop a file into a category folder and register it in `packages/features/src/_loader.ts`. Category controls auto-guards.
 
 ```ts
 // packages/features/src/general/ping.ts
 import type { Feature } from '@bot/contracts';
+import { reply } from '@bot/contracts';
 
 const ping: Feature = {
-  name: 'general/ping',
+  name: 'ping',
   version: '1.0.0',
   commands: [
     {
       name: 'ping',
       description: 'Reply with pong',
+      usage: '/ping',
       async handler(ctx) {
-        await ctx.reply(`pong ${Date.now() - ctx.timestamp}ms`);
+        await reply(ctx, `pong ${Date.now() - ctx.timestamp}ms`, {
+          buttons: [[{ label: '🔄 Refresh', command: 'ping' }]],
+        });
       },
     },
   ],
@@ -119,11 +139,11 @@ export default ping;
 | `owner/`   | `requireOwner()`                    |
 | `group/`   | `requireGroup()` + `requireOwner()` |
 
-Register the feature in `packages/features/src/_loader.ts` (static registry, deploy ships `dist/` only).
+The `reply()` helper auto-strips `buttons` on platforms that don't support them and auto-appends a `⬅ Kembali` row (pass `backTo: false` for root screens like `/menu` or `/start`).
 
 ## Configuration
 
-All config goes through `zod`-validated env. Key fields:
+All config goes through a `zod`-validated env. Key fields:
 
 | Variable                                           | Required       | Notes                                       |
 | -------------------------------------------------- | -------------- | ------------------------------------------- |
@@ -132,6 +152,8 @@ All config goes through `zod`-validated env. Key fields:
 | `WA_ENABLED` / `OWNER_WA`                          | yes if WA on   | JID of owner                                |
 | `TELE_ENABLED` / `TELEGRAM_BOT_TOKEN` / `OWNER_TG` | yes if Tele on | from BotFather                              |
 | `LOG_LEVEL`, `LOG_DIR`, `LOG_NO_COLOR`             | optional       | defaults to `info`, `./data/log`            |
+
+The `AppConfig` type lives in `@bot/contracts` and is verified at compile time against the zod schema in `@bot/utils`, so schema drift fails the build instead of silently slipping through.
 
 Full list in [`.env.example`](.env.example) and [`docs/tech-spec.md`](docs/tech-spec.md).
 
@@ -151,7 +173,7 @@ flowchart LR
 ```
 
 > [!TIP]
-> Set `AUTO_UPDATE=true` on the egg so each restart pulls the latest `deploy` tip. The bot runs `prisma migrate deploy` before booting, so schema changes are applied automatically.
+> Set `AUTO_UPDATE=true` on the egg so each restart pulls the latest `deploy` tip. The bot runs `prisma migrate deploy` before booting, so schema changes apply automatically.
 
 Full runbook with egg variables, persistent data layout, hot backup, and verification: [`docs/deploy-pterodactyl.md`](docs/deploy-pterodactyl.md).
 
@@ -176,6 +198,12 @@ sqlite3 /home/container/data/bot.db ".backup '/home/container/backups/bot-$(date
 
 > [!WARNING]
 > Never `cp` the SQLite file while the bot is running. Use the `.backup` command above; it copies through the WAL safely.
+
+## Reliability notes
+
+- **Reminder recovery**: every scheduler tick first resets reminders stuck in `firing` longer than 5 min back to `pending`, so a hard crash mid-fire never strands a row.
+- **Crash handling**: `uncaughtException` and `unhandledRejection` route through the same graceful shutdown path with exit code `1`, so the panel can distinguish a crash from a clean stop.
+- **Error boundary**: per-message errors are logged with the matching `traceId` but do **not** flush logs (flush is reserved for the fatal/exit path).
 
 ## Documentation
 

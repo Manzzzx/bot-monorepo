@@ -53,32 +53,34 @@ Saat bot WA/Telegram dibangun langsung di atas library native, masalah cepat mun
 
 ## 6. MVP Feature Scope
 
+Commands accept either `/` or `.` as prefix on both platforms (e.g. `/ping` or `.ping`).
+
 ### General
 
-- `!ping` — latency check.
-- `!stats` — uptime, memory, node version, feature count, command count, DB status.
-- `!help` / `!help <cmd>` — grouped command docs, hide owner-only command for non-owner.
-- `!menu` — human-readable menu; text-only MVP.
-- `!remind`, `!reminders`, `!cancelreminder` — persistent reminders with restart catchup.
+- `/ping` — latency check.
+- `/stats` — uptime, memory, node version, feature count, command count, DB status.
+- `/help` / `/help <cmd>` — grouped command docs, hide owner-only command for non-owner.
+- `/menu` — human-readable menu; supports inline buttons on Telegram.
+- `/remind`, `/reminders`, `/cancelreminder` — persistent reminders with restart catchup.
 
 ### Owner
 
-- `!eval` — guarded debug command, risky, owner-only.
-- `!broadcast` — outbound message to known users/groups, rate-limited.
-- `!shutdown` — graceful stop.
+- `/eval` — guarded debug command, risky, owner-only.
+- `/broadcast` — outbound message to known users/groups, rate-limited.
+- `/shutdown` — graceful stop.
 
 ### Group
 
-- `!kick` — remove user if bot has admin privileges.
-- `!mute` — ignore group commands while muted.
-- `!antilink` — auto-delete URL messages when enabled.
-- `!welcome` — configurable join message.
+- `/kick` — remove user if bot has admin privileges.
+- `/mute` — ignore group commands while muted.
+- `/antilink` — auto-delete URL messages when enabled.
+- `/welcome` — configurable join message.
 
 ## 7. Functional Requirements
 
 - Bot must boot WA and Telegram from `apps/bot` orchestrator in one process.
 - WA-only and Telegram-only entries must exist for dev/future split: `apps/wa`, `apps/tele`.
-- Parser must support prefixes `!`, `/`, `.` plus quoted args and flags.
+- Parser must support prefixes `/` and `.` plus quoted args and flags.
 - Feature loader must scan flat files and folder entries:
   - `features/src/<cat>/<name>.ts`
   - `features/src/<cat>/<name>/index.ts`
@@ -87,7 +89,9 @@ Saat bot WA/Telegram dibangun langsung di atas library native, masalah cepat mun
   - `owner`: `requireOwner()`
   - `group`: `requireGroup()` + `requireOwner()` for MVP
 - Reminder delivery must survive restart and avoid double-fire via DB compare-and-swap.
+- Reminders stuck in `firing` (process crash mid-fire) must auto-recover on next tick.
 - Logger must write the same event to terminal and file with matching `eventId`.
+- Telegram inline buttons (when supported) re-dispatch as if user typed the command, editing the source message in place.
 
 ## 8. Non-Functional Requirements
 
@@ -108,15 +112,16 @@ Saat bot WA/Telegram dibangun langsung di atas library native, masalah cepat mun
 - Log dir: `/home/container/data/log`.
 - Start command via `.bash_profile`: `npm start`.
 - `npm start`: `npx prisma migrate deploy && node apps/bot/dist/index.js`.
-- CI builds from `main` and force-pushes artifact to `deploy` branch.`r`n- Runtime env is injected via Pterodactyl `CUSTOM_ENVIRONMENT_VARIABLES` (`KEY=VAL;KEY=VAL`).
+- CI builds from `main` and force-pushes artifact to `deploy` branch.
+- Runtime env is injected via Pterodactyl `CUSTOM_ENVIRONMENT_VARIABLES` (`KEY=VAL;KEY=VAL`).
 - Panel pulls `deploy` branch via `AUTO_UPDATE=true`.
 
 ## 10. Success Metrics
 
 - `npm install`, `npm run build`, `npm run test`, lint, format all pass.
-- `!ping`, `!help`, `!menu`, `!remind` work on both WA and Telegram.
+- `/ping`, `/help`, `/menu`, `/remind` work on both WA and Telegram.
 - Owner-only commands reject non-owner on both platforms.
-- Reminder fires after restart catchup.
+- Reminder fires after restart catchup; stuck `firing` rows recover within one tick.
 - `eventId` from terminal can be found in file log.
 - Pterodactyl start boots bot within 60 seconds.
 - Pterodactyl stop exits gracefully within 10 seconds.
@@ -128,7 +133,7 @@ Saat bot WA/Telegram dibangun langsung di atas library native, masalah cepat mun
 | Baileys instability          | WA reconnect loops / process crash | Backoff, loggedOut terminal handling, future worker_threads split |
 | SQLite write contention      | `SQLITE_BUSY` under async load     | WAL, `busy_timeout=5000`, single process                          |
 | Secret exposure in panel env | Token/key visible to panel admin   | Trust boundary documented, rotate on migration                    |
-| WA buttons unreliable        | Bad UX if button-driven            | Text-first UX, Telegram buttons post-MVP only                     |
+| WA buttons unreliable        | Bad UX if button-driven            | Text-first UX on WA; Telegram buttons supported with edit-in-place |
 | Log divergence               | Terminal error absent in file      | Single pino fan-out, `eventId`, critical flush                    |
 
 ## 12. Open Questions
