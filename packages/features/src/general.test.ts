@@ -25,7 +25,7 @@ function entry(category: FeatureCategory, name: string, aliases: string[] = []):
       name,
       aliases,
       description: `${name} description`,
-      usage: `!${name}`,
+      usage: `/${name}`,
       async handler() {},
     },
     feature: { name: `${category}/${name}`, version: '1.0.0' },
@@ -122,11 +122,11 @@ describe('general features', () => {
     await command(menuFeature, 'menu').handler(nonOwnerDm);
     await command(menuFeature, 'menu').handler(ownerGroup);
 
-    expect(nonOwnerDm.reply).toHaveBeenCalledWith(expect.stringContaining('!ping'));
-    expect(nonOwnerDm.reply).toHaveBeenCalledWith(expect.not.stringContaining('!eval'));
-    expect(nonOwnerDm.reply).toHaveBeenCalledWith(expect.not.stringContaining('!kick'));
-    expect(ownerGroup.reply).toHaveBeenCalledWith(expect.stringContaining('!eval'));
-    expect(ownerGroup.reply).toHaveBeenCalledWith(expect.stringContaining('!kick'));
+    expect(nonOwnerDm.reply).toHaveBeenCalledWith(expect.stringContaining('/ping'));
+    expect(nonOwnerDm.reply).toHaveBeenCalledWith(expect.not.stringContaining('/eval'));
+    expect(nonOwnerDm.reply).toHaveBeenCalledWith(expect.not.stringContaining('/kick'));
+    expect(ownerGroup.reply).toHaveBeenCalledWith(expect.stringContaining('/eval'));
+    expect(ownerGroup.reply).toHaveBeenCalledWith(expect.stringContaining('/kick'));
   });
 
   it('help hides owner names and aliases from non-owners', async () => {
@@ -135,7 +135,7 @@ describe('general features', () => {
 
     await command(helpFeature, 'help').handler(ctx);
 
-    expect(ctx.reply).toHaveBeenCalledWith(expect.stringContaining('!ping'));
+    expect(ctx.reply).toHaveBeenCalledWith(expect.stringContaining('/ping'));
     expect(ctx.reply).toHaveBeenCalledWith(expect.not.stringContaining('eval'));
     expect(ctx.reply).toHaveBeenCalledWith(expect.not.stringContaining('js'));
   });
@@ -149,7 +149,7 @@ describe('general features', () => {
     expect(ctx.reply).toHaveBeenCalledWith(
       expect.stringContaining('Description: ping description'),
     );
-    expect(ctx.reply).toHaveBeenCalledWith(expect.stringContaining('Usage: !ping'));
+    expect(ctx.reply).toHaveBeenCalledWith(expect.stringContaining('Usage: /ping'));
     expect(ctx.reply).toHaveBeenCalledWith(expect.stringContaining('Aliases: p'));
     expect(ctx.reply).toHaveBeenCalledWith(expect.stringContaining('Category: General'));
   });

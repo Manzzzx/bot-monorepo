@@ -1,5 +1,10 @@
-import type { Feature } from '@bot/contracts';
+import type { Feature, ReplyButton } from '@bot/contracts';
+import { reply } from '@bot/contracts';
 import { appFromCtx, ensureGroup, parseToggle, upsertGroupConfig } from './_shared.js';
+
+function toggleButtons(current: boolean): ReplyButton[][] {
+  return [[{ label: current ? '🔊 Unmute' : '🔇 Mute', command: `mute ${current ? 'off' : 'on'}` }]];
+}
 
 const muteFeature: Feature = {
   name: 'mute',
@@ -15,12 +20,14 @@ const muteFeature: Feature = {
         const group = await ensureGroup(app, ctx);
         const next = parseToggle(ctx.args[0], group.config?.muted ?? false);
         if (next === null) {
-          await ctx.reply('Usage: /mute [on|off]');
+          await reply(ctx, 'Usage: /mute [on|off]');
           return;
         }
 
         await upsertGroupConfig(app, group.id, { muted: next, mutedUntil: null });
-        await ctx.reply(`Group mute ${next ? 'enabled' : 'disabled'}.`);
+        await reply(ctx, `Group mute ${next ? 'enabled' : 'disabled'}.`, {
+          buttons: toggleButtons(next),
+        });
       },
     },
   ],

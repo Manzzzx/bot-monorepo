@@ -1,4 +1,4 @@
-import type { Context as GrammyContext } from 'grammy';
+import { InlineKeyboard, type Context as GrammyContext } from 'grammy';
 import { ulid } from 'ulid';
 import type {
   AppContext,
@@ -7,6 +7,7 @@ import type {
   MessageCtx,
   Platform,
   PlatformCapabilities,
+  ReplyButton,
   ReplyOpts,
 } from '@bot/contracts';
 
@@ -18,6 +19,8 @@ const TELE_CAPABILITIES: PlatformCapabilities = {
 };
 
 const PLATFORM: Platform = 'tele';
+const TELE_CALLBACK_DATA_MAX = 64;
+const TELE_CALLBACK_PREFIX = 'cmd:';
 
 interface TeleCtxDeps {
   app: Pick<AppContext, 'logger' | 'rateLimit'>;
@@ -83,6 +86,35 @@ function extractText(update: GrammyContext): string {
   return message.text ?? message.caption ?? '';
 }
 
+export function buildInlineKeyboard(rows: ReplyButton[][] | undefined): InlineKeyboard | null {
+  if (!rows || rows.length === 0) return null;
+  const keyboard = new InlineKeyboard();
+  let hasAny = false;
+  for (const row of rows) {
+    if (!row || row.length === 0) continue;
+    for (const button of row) {
+      if (!button.label) continue;
+      if (button.url) {
+        keyboard.url(button.label, button.url);
+        hasAny = true;
+        continue;
+      }
+      if (button.command) {
+        const encoded = `${TELE_CALLBACK_PREFIX}${button.command}`;
+        const buf = Buffer.from(encoded, 'utf8');
+        const safe =
+          buf.byteLength > TELE_CALLBACK_DATA_MAX
+            ? buf.subarray(0, TELE_CALLBACK_DATA_MAX).toString('utf8')
+            : encoded;
+        keyboard.text(button.label, safe);
+        hasAny = true;
+      }
+    }
+    keyboard.row();
+  }
+  return hasAny ? keyboard : null;
+}
+
 export function createTeleMessageCtx(
   deps: TeleCtxDeps,
   update: GrammyContext,
@@ -122,6 +154,7 @@ export function createTeleMessageCtx(
     traceId,
     raw: update,
     async reply(replyText: string, opts?: ReplyOpts): Promise<void> {
+      const keyboard = buildInlineKeyboard(opts?.buttons);
       await deps.app.rateLimit.outbound(PLATFORM, chatId).schedule(async () => {
         if (opts?.media && 'buffer' in opts.media) {
           const grammyMod = await import('grammy');
@@ -129,23 +162,26 @@ export function createTeleMessageCtx(
             opts.media.buffer,
             opts.media.filename ?? 'file',
           );
+          const mediaOpts: Record<string, unknown> = { caption: replyText };
+          if (keyboard) mediaOpts.reply_markup = keyboard;
           if (opts.media.mimeType.startsWith('image/')) {
-            await update.api.sendPhoto(chatId, inputFile, { caption: replyText });
+            await update.api.sendPhoto(chatId, inputFile, mediaOpts);
             return;
           }
           if (opts.media.mimeType.startsWith('video/')) {
-            await update.api.sendVideo(chatId, inputFile, { caption: replyText });
+            await update.api.sendVideo(chatId, inputFile, mediaOpts);
             return;
           }
           if (opts.media.mimeType.startsWith('audio/')) {
-            await update.api.sendAudio(chatId, inputFile, { caption: replyText });
+            await update.api.sendAudio(chatId, inputFile, mediaOpts);
             return;
           }
-          await update.api.sendDocument(chatId, inputFile, { caption: replyText });
+          await update.api.sendDocument(chatId, inputFile, mediaOpts);
           return;
         }
-
-        const sendOpts = opts?.quote ? { reply_parameters: { message_id: Number(messageId) } } : {};
+        const sendOpts: Record<string, unknown> = {};
+        if (opts?.quote) sendOpts.reply_parameters = { message_id: Number(messageId) };
+        if (keyboard) sendOpts.reply_markup = keyboard;
         await update.api.sendMessage(chatId, replyText, sendOpts);
       });
     },
@@ -180,4 +216,112 @@ export function hasUserMessage(update: GrammyContext): boolean {
   if (!message) return false;
   if (message.from?.is_bot) return false;
   return true;
+}
+
+export function createTeleCallbackCtx(
+  deps: TeleCtxDeps,
+  update: GrammyContext,
+): MessageCtx<GrammyContext> | null {
+  const cb = update.callbackQuery;
+  if (!cb || !cb.message) return null;
+  const data = typeof cb.data === 'string' ? cb.data : '';
+  if (!data.startsWith(TELE_CALLBACK_PREFIX)) return null;
+
+  const command = data.slice(TELE_CALLBACK_PREFIX.length);
+  const chatId = String(cb.message.chat.id);
+  const userId = String(cb.from.id);
+  const isGroup = cb.message.chat.type === 'group' || cb.message.chat.type === 'supergroup';
+  const traceId = ulid();
+  const triggerMessageId = String(cb.message.message_id);
+  const timestamp = Date.now();
+  const childLogger = deps.app.logger.child({
+    platform: PLATFORM,
+    chatId,
+    userId,
+    messageId: triggerMessageId,
+    via: 'callback',
+  });
+
+  const callbackMessage = cb.message as unknown as {
+    text?: string;
+    photo?: unknown;
+    video?: unknown;
+    audio?: unknown;
+    document?: unknown;
+  };
+  const canEditInPlace =
+    typeof callbackMessage.text === 'string' &&
+    !callbackMessage.photo &&
+    !callbackMessage.video &&
+    !callbackMessage.audio &&
+    !callbackMessage.document;
+
+  return {
+    platform: PLATFORM,
+    messageId: triggerMessageId,
+    chatId,
+    userId,
+    isGroup,
+    timestamp,
+    capabilities: TELE_CAPABILITIES,
+    text: command.startsWith('/') || command.startsWith('.') ? command : `/${command}`,
+    command: null,
+    args: [],
+    flags: {},
+    replyToId: triggerMessageId,
+    logger: childLogger,
+    traceId,
+    raw: update,
+    async reply(replyText: string, opts?: ReplyOpts): Promise<void> {
+      const keyboard = buildInlineKeyboard(opts?.buttons);
+      await deps.app.rateLimit.outbound(PLATFORM, chatId).schedule(async () => {
+        if (opts?.media && 'buffer' in opts.media) {
+          const grammyMod = await import('grammy');
+          const inputFile = new grammyMod.InputFile(
+            opts.media.buffer,
+            opts.media.filename ?? 'file',
+          );
+          const mediaOpts: Record<string, unknown> = { caption: replyText };
+          if (keyboard) mediaOpts.reply_markup = keyboard;
+          if (opts.media.mimeType.startsWith('image/')) {
+            await update.api.sendPhoto(chatId, inputFile, mediaOpts);
+            return;
+          }
+          if (opts.media.mimeType.startsWith('video/')) {
+            await update.api.sendVideo(chatId, inputFile, mediaOpts);
+            return;
+          }
+          if (opts.media.mimeType.startsWith('audio/')) {
+            await update.api.sendAudio(chatId, inputFile, mediaOpts);
+            return;
+          }
+          await update.api.sendDocument(chatId, inputFile, mediaOpts);
+          return;
+        }
+
+        if (canEditInPlace) {
+          try {
+            const editOpts: Record<string, unknown> = {};
+            if (keyboard) editOpts.reply_markup = keyboard;
+            await update.api.editMessageText(
+              chatId,
+              Number(triggerMessageId),
+              replyText,
+              editOpts,
+            );
+            return;
+          } catch (error) {
+            childLogger.warn(
+              { err: error, status: 'rejected' },
+              'editMessageText failed, falling back to sendMessage',
+            );
+          }
+        }
+
+        const sendOpts: Record<string, unknown> = {};
+        if (keyboard) sendOpts.reply_markup = keyboard;
+        await update.api.sendMessage(chatId, replyText, sendOpts);
+      });
+    },
+  };
 }

@@ -15,10 +15,28 @@ export interface ReplyMedia {
   filename?: string;
 }
 
+/**
+ * Inline button for platforms that support them (e.g. Telegram).
+ * Set exactly one of `command` or `url`.
+ *
+ * - `command`: re-dispatched as if the user typed it (prefix auto-prepended).
+ * - `url`: opens an external link.
+ */
+export interface ReplyButton {
+  label: string;
+  command?: string;
+  url?: string;
+}
+
 export interface ReplyOpts {
-  quote?: boolean;
-  mentions?: string[];
-  media?: MediaRef | ReplyMedia;
+  quote?: boolean | undefined;
+  mentions?: string[] | undefined;
+  media?: MediaRef | ReplyMedia | undefined;
+  /**
+   * Inline keyboard rows. Outer = rows, inner = buttons in that row.
+   * Adapters whose `capabilities.buttons` is false silently ignore this.
+   */
+  buttons?: ReplyButton[][] | undefined;
 }
 
 export interface MessageCtx<TRaw = unknown> {

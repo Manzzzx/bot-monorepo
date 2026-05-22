@@ -1,4 +1,7 @@
-import type { Feature } from '@bot/contracts';
+import type { Feature, ReplyButton } from '@bot/contracts';
+import { reply } from '@bot/contracts';
+
+const refreshRow: ReplyButton[][] = [[{ label: '🔄 Refresh', command: 'ping' }]];
 
 const pingFeature: Feature = {
   name: 'ping',
@@ -11,7 +14,7 @@ const pingFeature: Feature = {
       usage: '/ping',
       async handler(ctx) {
         const latency = Math.max(0, Date.now() - ctx.timestamp);
-        await ctx.reply(`pong (latency: ${latency}ms)`);
+        await reply(ctx, `pong (latency: ${latency}ms)`, { buttons: refreshRow });
       },
     },
   ],

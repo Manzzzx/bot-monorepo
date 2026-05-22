@@ -1,4 +1,5 @@
-import type { Feature, Platform } from '@bot/contracts';
+import type { Feature, Platform, ReplyButton } from '@bot/contracts';
+import { reply } from '@bot/contracts';
 import {
   appFromCtx,
   ensureGroup,
@@ -73,6 +74,8 @@ async function sendWelcome(payload: unknown, app: GroupApp): Promise<void> {
   }
 }
 
+const disableButton: ReplyButton[][] = [[{ label: '✖ Disable welcome', command: 'welcome off' }]];
+
 const welcomeFeature: Feature = {
   name: 'welcome',
   version: '1.0.0',
@@ -87,18 +90,18 @@ const welcomeFeature: Feature = {
         const group = await ensureGroup(app, ctx);
         const text = ctx.args.join(' ').trim();
         if (!text) {
-          await ctx.reply('Usage: /welcome <message|off>');
+          await reply(ctx, 'Usage: /welcome <message|off>');
           return;
         }
 
         if (text.toLowerCase() === 'off') {
           await upsertGroupConfig(app, group.id, { welcomeMsg: null });
-          await ctx.reply('Welcome disabled.');
+          await reply(ctx, 'Welcome disabled.');
           return;
         }
 
         await upsertGroupConfig(app, group.id, { welcomeMsg: text });
-        await ctx.reply('Welcome message updated.');
+        await reply(ctx, 'Welcome message updated.', { buttons: disableButton });
       },
     },
   ],

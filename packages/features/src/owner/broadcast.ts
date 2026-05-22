@@ -1,4 +1,5 @@
-import type { Feature, Platform } from '@bot/contracts';
+import type { Feature, Platform, ReplyButton } from '@bot/contracts';
+import { reply } from '@bot/contracts';
 import { appFromCtx } from './_shared.js';
 
 type TargetRow = {
@@ -38,6 +39,13 @@ function dedupe(rows: TargetRow[]): TargetRow[] {
   });
 }
 
+const followUpButtons: ReplyButton[][] = [
+  [
+    { label: '📊 Stats', command: 'stats' },
+    { label: '📋 Menu', command: 'menu' },
+  ],
+];
+
 const broadcastFeature: Feature = {
   name: 'broadcast',
   version: '1.0.0',
@@ -50,7 +58,7 @@ const broadcastFeature: Feature = {
       async handler(ctx) {
         const parsed = parseBroadcast(ctx.args);
         if (!parsed) {
-          await ctx.reply('Usage: /broadcast [users|groups|all] <message>');
+          await reply(ctx, 'Usage: /broadcast [users|groups|all] <message>');
           return;
         }
 
@@ -74,7 +82,10 @@ const broadcastFeature: Feature = {
           }
         }
 
-        await ctx.reply(`Broadcast complete: sent=${sent}, failed=${failed}`);
+        await reply(ctx, `Broadcast complete: sent=${sent}, failed=${failed}`, {
+          buttons: followUpButtons,
+          backTo: false,
+        });
       },
     },
   ],

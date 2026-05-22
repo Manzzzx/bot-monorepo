@@ -1,6 +1,11 @@
 import { Bot, type Context as GrammyContext } from 'grammy';
 import type { AppContext, MessageAdapter, MessageCtx, Platform, ReplyOpts } from '@bot/contracts';
-import { createTeleMessageCtx, hasUserMessage } from './context.js';
+import {
+  buildInlineKeyboard,
+  createTeleCallbackCtx,
+  createTeleMessageCtx,
+  hasUserMessage,
+} from './context.js';
 
 const PLATFORM: Platform = 'tele';
 
@@ -38,6 +43,25 @@ export function createTeleAdapter(options: TeleAdapterOptions): TeleAdapter {
     }
   });
 
+  bot.on('callback_query:data', async (ctx) => {
+    if (paused) return;
+    try {
+      await ctx.answerCallbackQuery();
+    } catch (error) {
+      logger.warn({ err: error, status: 'rejected' }, 'answerCallbackQuery failed');
+    }
+    const messageCtx = createTeleCallbackCtx({ app }, ctx);
+    if (!messageCtx) {
+      logger.debug({ status: 'rejected' }, 'Callback data did not match cmd: prefix');
+      return;
+    }
+    try {
+      await onMessage(messageCtx);
+    } catch (error) {
+      logger.error({ err: error, status: 'error' }, 'Telegram callback handler failed');
+    }
+  });
+
   bot.catch((error) => {
     logger.error({ err: error.error, status: 'error' }, 'Telegram bot caught error');
   });
@@ -50,6 +74,7 @@ export function createTeleAdapter(options: TeleAdapterOptions): TeleAdapter {
     bot
       .start({
         drop_pending_updates: true,
+        allowed_updates: ['message', 'edited_message', 'callback_query'],
         onStart: () => {
           app.bus.emit('connection.ready', { platform: PLATFORM });
           logger.info({ status: 'ok' }, 'Telegram polling started');
@@ -74,26 +99,31 @@ export function createTeleAdapter(options: TeleAdapterOptions): TeleAdapter {
   return {
     platform: PLATFORM,
     async sendMessage(chatId: string, text: string, opts?: ReplyOpts): Promise<void> {
+      const keyboard = buildInlineKeyboard(opts?.buttons);
       await app.rateLimit.outbound(PLATFORM, chatId).schedule(async () => {
         if (opts?.media && 'buffer' in opts.media) {
           const grammy = await import('grammy');
           const inputFile = new grammy.InputFile(opts.media.buffer, opts.media.filename ?? 'file');
+          const mediaOpts: Record<string, unknown> = { caption: text };
+          if (keyboard) mediaOpts.reply_markup = keyboard;
           if (opts.media.mimeType.startsWith('image/')) {
-            await bot.api.sendPhoto(chatId, inputFile, { caption: text });
+            await bot.api.sendPhoto(chatId, inputFile, mediaOpts);
             return;
           }
           if (opts.media.mimeType.startsWith('video/')) {
-            await bot.api.sendVideo(chatId, inputFile, { caption: text });
+            await bot.api.sendVideo(chatId, inputFile, mediaOpts);
             return;
           }
           if (opts.media.mimeType.startsWith('audio/')) {
-            await bot.api.sendAudio(chatId, inputFile, { caption: text });
+            await bot.api.sendAudio(chatId, inputFile, mediaOpts);
             return;
           }
-          await bot.api.sendDocument(chatId, inputFile, { caption: text });
+          await bot.api.sendDocument(chatId, inputFile, mediaOpts);
           return;
         }
-        await bot.api.sendMessage(chatId, text);
+        const sendOpts: Record<string, unknown> = {};
+        if (keyboard) sendOpts.reply_markup = keyboard;
+        await bot.api.sendMessage(chatId, text, sendOpts);
       });
     },
     start,

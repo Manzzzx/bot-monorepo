@@ -1,4 +1,13 @@
-import type { Feature } from '@bot/contracts';
+import type { Feature, ReplyButton } from '@bot/contracts';
+import { reply } from '@bot/contracts';
+
+const startButtons: ReplyButton[][] = [
+  [
+    { label: '📋 Menu', command: 'menu' },
+    { label: '❓ Help', command: 'help' },
+  ],
+  [{ label: '🏓 Ping', command: 'ping' }],
+];
 
 const startFeature: Feature = {
   name: 'start',
@@ -15,7 +24,7 @@ const startFeature: Feature = {
           'Coba: `/help` atau `/menu` untuk lihat command.',
           'Quick test: `/ping`',
         ];
-        await ctx.reply(lines.join('\n'));
+        await reply(ctx, lines.join('\n'), { buttons: startButtons, backTo: false });
       },
     },
   ],

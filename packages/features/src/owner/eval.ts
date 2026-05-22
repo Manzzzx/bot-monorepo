@@ -1,9 +1,11 @@
 import { runInNewContext } from 'node:vm';
 import { inspect } from 'node:util';
-import type { Feature } from '@bot/contracts';
+import type { Feature, ReplyButton } from '@bot/contracts';
+import { reply } from '@bot/contracts';
 
 const outputLimit = 4_000;
 const timeoutMs = 1_000;
+const followUp: ReplyButton[][] = [[{ label: '📋 Menu', command: 'menu' }]];
 
 function capOutput(output: string): string {
   if (output.length <= outputLimit) return output;
@@ -43,7 +45,7 @@ const evalFeature: Feature = {
       async handler(ctx) {
         const code = ctx.args.join(' ').trim();
         if (!code) {
-          await ctx.reply('Usage: /eval <javascript>');
+          await reply(ctx, 'Usage: /eval <javascript>');
           return;
         }
 
@@ -65,10 +67,10 @@ const evalFeature: Feature = {
             { timeout: timeoutMs },
           );
           const resolved = await awaitWithTimeout(result);
-          await ctx.reply(capOutput(formatResult(resolved)));
+          await reply(ctx, capOutput(formatResult(resolved)), { buttons: followUp, backTo: false });
         } catch (error) {
           const message = error instanceof Error ? error.message : String(error);
-          await ctx.reply(capOutput(`Error: ${message}`));
+          await reply(ctx, capOutput(`Error: ${message}`), { buttons: followUp, backTo: false });
         }
       },
     },

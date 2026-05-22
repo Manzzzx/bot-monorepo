@@ -1,4 +1,5 @@
-import type { Feature } from '@bot/contracts';
+import type { Feature, ReplyButton } from '@bot/contracts';
+import { reply } from '@bot/contracts';
 import {
   appFromCtx,
   ensureGroup,
@@ -10,6 +11,14 @@ import {
 } from './_shared.js';
 
 const urlPattern = /(?:https?:\/\/|www\.|\b[a-z0-9-]+(?:\.[a-z0-9-]+)+\b)/i;
+
+function toggleButtons(current: boolean): ReplyButton[][] {
+  return [
+    [
+      { label: current ? '🔕 Disable' : '🔔 Enable', command: `antilink ${current ? 'off' : 'on'}` },
+    ],
+  ];
+}
 
 async function antiLinkMessage(payload: unknown, app: GroupApp): Promise<void> {
   if (!isMessageCtx(payload) || !payload.isGroup || !urlPattern.test(payload.text)) return;
@@ -40,12 +49,14 @@ const antiLinkFeature: Feature = {
         const group = await ensureGroup(app, ctx);
         const next = parseToggle(ctx.args[0], group.config?.antiLink ?? false);
         if (next === null) {
-          await ctx.reply('Usage: /antilink [on|off]');
+          await reply(ctx, 'Usage: /antilink [on|off]');
           return;
         }
 
         await upsertGroupConfig(app, group.id, { antiLink: next });
-        await ctx.reply(`Anti-link ${next ? 'enabled' : 'disabled'}.`);
+        await reply(ctx, `Anti-link ${next ? 'enabled' : 'disabled'}.`, {
+          buttons: toggleButtons(next),
+        });
       },
     },
   ],

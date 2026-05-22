@@ -1,4 +1,5 @@
-import type { AppContext, MessageCtx } from '@bot/contracts';
+import type { AppContext, MessageCtx, ReplyButton } from '@bot/contracts';
+import { reply } from '@bot/contracts';
 import { userRepo, type PrismaRepoClient } from '@bot/db';
 
 type ReminderApp = AppContext<PrismaRepoClient>;
@@ -22,7 +23,6 @@ function appFromCtx(ctx: MessageCtx): ReminderApp {
 function parseDuration(raw: string | undefined): number | null {
   const match = raw?.trim().match(/^(\d+)([smhd])$/i);
   if (!match) return null;
-
   const amount = Number(match[1]);
   const unit = match[2]?.toLowerCase() as DurationUnit;
   if (!Number.isSafeInteger(amount) || amount <= 0) return null;
@@ -44,7 +44,9 @@ function formatDueAt(date: Date): string {
 export async function createReminder(ctx: MessageCtx): Promise<void> {
   const parsed = parseReminderArgs(ctx.args);
   if (!parsed) {
-    await ctx.reply('Usage: /remind 10m drink water');
+    await reply(ctx, 'Usage: /remind 10m drink water', {
+      buttons: [[{ label: '📋 My reminders', command: 'reminders' }]],
+    });
     return;
   }
 
@@ -62,7 +64,18 @@ export async function createReminder(ctx: MessageCtx): Promise<void> {
   });
 
   await app.scheduler.scheduleOnce(dueAt, `reminder:${reminder.id}`, { id: reminder.id });
-  await ctx.reply(`Reminder set (${reminder.id}) for ${formatDueAt(dueAt)}: ${parsed.text}`);
+
+  const buttons: ReplyButton[][] = [
+    [
+      { label: '📋 List', command: 'reminders' },
+      { label: '✖ Cancel', command: `cancelreminder ${reminder.id}` },
+    ],
+  ];
+  await reply(
+    ctx,
+    `Reminder set (${reminder.id}) for ${formatDueAt(dueAt)}: ${parsed.text}`,
+    { buttons },
+  );
 }
 
 export async function listReminders(ctx: MessageCtx): Promise<void> {
@@ -72,7 +85,7 @@ export async function listReminders(ctx: MessageCtx): Promise<void> {
   });
 
   if (!user) {
-    await ctx.reply('No pending reminders.');
+    await reply(ctx, 'No pending reminders.');
     return;
   }
 
@@ -83,24 +96,33 @@ export async function listReminders(ctx: MessageCtx): Promise<void> {
   });
 
   if (reminders.length === 0) {
-    await ctx.reply('No pending reminders.');
+    await reply(ctx, 'No pending reminders.');
     return;
   }
 
-  await ctx.reply(
+  const buttons: ReplyButton[][] = reminders.slice(0, 5).map((reminder) => [
+    {
+      label: `✖ Cancel ${reminder.id.slice(-6)}`,
+      command: `cancelreminder ${reminder.id}`,
+    },
+  ]);
+
+  await reply(
+    ctx,
     [
       'Pending reminders:',
       ...reminders.map(
         (reminder) => `- ${reminder.id} at ${formatDueAt(reminder.dueAt)}: ${reminder.text}`,
       ),
     ].join('\n'),
+    { buttons },
   );
 }
 
 export async function cancelReminder(ctx: MessageCtx): Promise<void> {
   const reminderId = ctx.args[0];
   if (!reminderId) {
-    await ctx.reply('Usage: /cancelreminder <id>');
+    await reply(ctx, 'Usage: /cancelreminder <id>');
     return;
   }
 
@@ -110,7 +132,7 @@ export async function cancelReminder(ctx: MessageCtx): Promise<void> {
   });
 
   if (!user) {
-    await ctx.reply(`Reminder not found: ${reminderId}`);
+    await reply(ctx, `Reminder not found: ${reminderId}`, { backTo: 'reminders' });
     return;
   }
 
@@ -119,9 +141,11 @@ export async function cancelReminder(ctx: MessageCtx): Promise<void> {
   });
 
   if (result.count === 0) {
-    await ctx.reply(`Reminder not found: ${reminderId}`);
+    await reply(ctx, `Reminder not found: ${reminderId}`, { backTo: 'reminders' });
     return;
   }
 
-  await ctx.reply(`Reminder canceled: ${reminderId}`);
+  await reply(ctx, `Reminder canceled: ${reminderId}`, {
+    buttons: [[{ label: '📋 List', command: 'reminders' }]],
+  });
 }

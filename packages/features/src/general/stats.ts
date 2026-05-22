@@ -1,9 +1,17 @@
-import type { Feature } from '@bot/contracts';
+import type { Feature, ReplyButton } from '@bot/contracts';
+import { reply } from '@bot/contracts';
 import { appFromCtx } from './_registry.js';
 
 type DbHealth = {
   $queryRawUnsafe?: (query: string) => Promise<unknown>;
 };
+
+const statsButtons: ReplyButton[][] = [
+  [
+    { label: '🔄 Refresh', command: 'stats' },
+    { label: '📋 Menu', command: 'menu' },
+  ],
+];
 
 function formatDuration(totalSeconds: number): string {
   const seconds = Math.floor(totalSeconds % 60);
@@ -26,7 +34,6 @@ function formatBytes(bytes: number): string {
 async function dbStatus(db: unknown): Promise<string> {
   const candidate = db as DbHealth;
   if (typeof candidate.$queryRawUnsafe !== 'function') return 'unavailable';
-
   try {
     await candidate.$queryRawUnsafe('SELECT 1');
     return 'ok';
@@ -51,7 +58,8 @@ const statsFeature: Feature = {
         const memory = formatBytes(process.memoryUsage().rss);
         const status = await dbStatus(app.db);
 
-        await ctx.reply(
+        await reply(
+          ctx,
           [
             'Bot stats',
             `uptime: ${formatDuration(process.uptime())}`,
@@ -61,6 +69,7 @@ const statsFeature: Feature = {
             `commands: ${commands.length}`,
             `db: ${status}`,
           ].join('\n'),
+          { buttons: statsButtons, backTo: false },
         );
       },
     },
