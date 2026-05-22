@@ -1,0 +1,40 @@
+{
+  "name": "@app/bot",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "dev": "tsx watch src/index.ts",
+    "test": "vitest run --passWithNoTests",
+    "test:coverage": "vitest run --coverage --passWithNoTests",
+    "lint": "eslint . --max-warnings=0"
+  },
+  "dependencies": {
+    "@bot/adapters": "^0.0.0",
+    "@bot/contracts": "^0.0.0",
+    "@bot/core": "^0.0.0",
+    "@bot/db": "^0.0.0",
+    "@bot/features": "^0.0.0",
+    "@bot/utils": "^0.0.0"
+  },
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "default": "./dist/index.js"
+    },
+    "./bootstrap": {
+      "types": "./dist/bootstrap.d.ts",
+      "import": "./dist/bootstrap.js",
+      "default": "./dist/bootstrap.js"
+    },
+    "./shutdown": {
+      "types": "./dist/shutdown.d.ts",
+      "import": "./dist/shutdown.js",
+      "default": "./dist/shutdown.js"
+    }
+  }
+}

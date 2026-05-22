@@ -1,0 +1,76 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+}
+
+model User {
+  id         String     @id @default(cuid())
+  platform   String
+  externalId String
+  isOwner    Boolean    @default(false)
+  createdAt  DateTime   @default(now())
+  updatedAt  DateTime   @updatedAt
+  reminders  Reminder[]
+
+  @@unique([platform, externalId])
+  @@index([platform])
+}
+
+model Group {
+  id         String       @id @default(cuid())
+  platform   String
+  externalId String
+  createdAt  DateTime     @default(now())
+  updatedAt  DateTime     @updatedAt
+  config     GroupConfig?
+
+  @@unique([platform, externalId])
+}
+
+model GroupConfig {
+  groupId    String    @id
+  group      Group     @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  antiLink   Boolean   @default(false)
+  welcomeMsg String?
+  muted      Boolean   @default(false)
+  mutedUntil DateTime?
+  updatedAt  DateTime  @updatedAt
+}
+
+enum ReminderStatus {
+  pending
+  firing
+  done
+  failed
+}
+
+model Reminder {
+  id           String         @id @default(cuid())
+  userId       String
+  user         User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  chatId       String
+  platform     String
+  text         String
+  dueAt        DateTime
+  status       ReminderStatus @default(pending)
+  attemptCount Int            @default(0)
+  lastError    String?
+  createdAt    DateTime       @default(now())
+  updatedAt    DateTime       @updatedAt
+
+  @@index([dueAt, status])
+  @@index([userId, status])
+}
+
+model WAAuthState {
+  id            String   @id @default("default")
+  encryptedBlob Bytes
+  iv            Bytes
+  authTag       Bytes
+  updatedAt     DateTime @updatedAt
+}
+
+

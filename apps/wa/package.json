@@ -1,0 +1,23 @@
+{
+  "name": "@app/wa",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "dev": "tsx watch src/index.ts",
+    "test": "vitest run --passWithNoTests",
+    "test:coverage": "vitest run --coverage --passWithNoTests",
+    "lint": "eslint . --max-warnings=0"
+  },
+  "dependencies": {
+    "@app/bot": "^0.0.0",
+    "@bot/adapters": "^0.0.0",
+    "@bot/contracts": "^0.0.0",
+    "@bot/core": "^0.0.0",
+    "@bot/db": "^0.0.0",
+    "@bot/utils": "^0.0.0"
+  }
+}

@@ -1,0 +1,31 @@
+{
+  "name": "@bot/core",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "default": "./dist/index.js"
+    }
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "test": "vitest run --passWithNoTests",
+    "test:coverage": "vitest run --coverage --passWithNoTests",
+    "lint": "eslint . --max-warnings=0"
+  },
+  "dependencies": {
+    "@bot/contracts": "^0.0.0",
+    "@bot/utils": "^0.0.0",
+    "bottleneck": "^2.19.5",
+    "koa-compose": "^4.1.0",
+    "lru-cache": "^11.5.0",
+    "yargs-parser": "^22.0.0",
+    "@bot/db": "^0.0.0",
+    "croner": "^10.0.1"
+  }
+}
