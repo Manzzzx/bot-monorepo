@@ -39,11 +39,11 @@ const evalFeature: Feature = {
       name: 'eval',
       aliases: ['js'],
       description: 'Evaluate JavaScript in a sandbox.',
-      usage: '!eval 1 + 1',
+      usage: '/eval 1 + 1',
       async handler(ctx) {
         const code = ctx.args.join(' ').trim();
         if (!code) {
-          await ctx.reply('Usage: !eval <javascript>');
+          await ctx.reply('Usage: /eval <javascript>');
           return;
         }
 

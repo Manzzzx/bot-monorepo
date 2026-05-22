@@ -9,7 +9,7 @@ const shutdownFeature: Feature = {
       name: 'shutdown',
       aliases: ['poweroff'],
       description: 'Request a graceful bot shutdown.',
-      usage: '!shutdown [reason]',
+      usage: '/shutdown [reason]',
       async handler(ctx) {
         const app = appFromCtx(ctx);
         const reason = ctx.args.join(' ').trim() || 'owner requested shutdown';

@@ -18,6 +18,7 @@
     "@bot/contracts": "^0.0.0",
     "@bot/core": "^0.0.0",
     "@bot/db": "^0.0.0",
-    "@bot/utils": "^0.0.0"
+    "@bot/utils": "^0.0.0",
+    "pino": "^10.3.1"
   }
 }

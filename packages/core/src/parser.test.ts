@@ -2,9 +2,9 @@ import { describe, expect, it } from 'vitest';
 import { parseInput } from './parser.js';
 
 describe('parseInput', () => {
-  it('parses bang commands without args', () => {
-    expect(parseInput('!ping')).toEqual({
-      prefix: '!',
+  it('parses slash commands without args', () => {
+    expect(parseInput('/ping')).toEqual({
+      prefix: '/',
       command: 'ping',
       rawArgs: '',
       args: [],
@@ -30,6 +30,10 @@ describe('parseInput', () => {
       args: [],
       flags: { group: 'hello world' },
     });
+  });
+
+  it('rejects the legacy bang prefix', () => {
+    expect(parseInput('!ping')).toBeNull();
   });
 
   it('returns null for non-command text', () => {

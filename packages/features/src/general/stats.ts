@@ -43,7 +43,7 @@ const statsFeature: Feature = {
       name: 'stats',
       aliases: ['status'],
       description: 'Show bot runtime stats.',
-      usage: '!stats',
+      usage: '/stats',
       async handler(ctx) {
         const app = appFromCtx(ctx);
         const commands = app.registry.list();

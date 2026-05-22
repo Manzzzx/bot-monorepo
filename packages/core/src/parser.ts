@@ -3,14 +3,14 @@ import yargsParser from 'yargs-parser';
 export type ParsedFlag = string | boolean | number;
 
 export interface ParsedInput {
-  prefix: '!' | '/' | '.';
+  prefix: '/' | '.';
   command: string;
   rawArgs: string;
   args: string[];
   flags: Record<string, ParsedFlag>;
 }
 
-const commandPattern = /^([!/.])(\S+)\s*(.*)$/;
+const commandPattern = /^([/.])(\S+)\s*(.*)$/;
 const ignoredParserKeys = new Set(['_', '$0', '--']);
 
 function toFlagValue(value: unknown): ParsedFlag | undefined {

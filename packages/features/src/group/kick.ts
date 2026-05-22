@@ -20,11 +20,11 @@ const kickFeature: Feature = {
       name: 'kick',
       aliases: ['remove'],
       description: 'Kick a group member when the platform adapter supports it.',
-      usage: '!kick <userId>',
+      usage: '/kick <userId>',
       async handler(ctx) {
         const target = targetFromArgs(ctx.args);
         if (!target) {
-          await ctx.reply('Usage: !kick <userId>');
+          await ctx.reply('Usage: /kick <userId>');
           return;
         }
 

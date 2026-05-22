@@ -81,13 +81,13 @@ const welcomeFeature: Feature = {
       name: 'welcome',
       aliases: ['setwelcome'],
       description: 'Set or disable a group welcome message.',
-      usage: '!welcome <message|off>',
+      usage: '/welcome <message|off>',
       async handler(ctx) {
         const app = appFromCtx(ctx);
         const group = await ensureGroup(app, ctx);
         const text = ctx.args.join(' ').trim();
         if (!text) {
-          await ctx.reply('Usage: !welcome <message|off>');
+          await ctx.reply('Usage: /welcome <message|off>');
           return;
         }
 

@@ -20,12 +20,14 @@
   },
   "dependencies": {
     "@bot/contracts": "^0.0.0",
+    "@bot/db": "^0.0.0",
     "@bot/utils": "^0.0.0",
     "bottleneck": "^2.19.5",
+    "croner": "^10.0.1",
     "koa-compose": "^4.1.0",
     "lru-cache": "^11.5.0",
-    "yargs-parser": "^22.0.0",
-    "@bot/db": "^0.0.0",
-    "croner": "^10.0.1"
+    "pino": "^10.3.1",
+    "ulid": "^3.0.2",
+    "yargs-parser": "^22.0.0"
   }
 }

@@ -2,7 +2,7 @@ import type { Feature } from '@bot/contracts';
 import { appFromCtx, canSeeCommand, categoryTitle, visibleCommands } from './_registry.js';
 
 function usageLine(commandName: string): string {
-  return `Use !help ${commandName} for details.`;
+  return `Use /help ${commandName} for details.`;
 }
 
 const helpFeature: Feature = {
@@ -13,7 +13,7 @@ const helpFeature: Feature = {
       name: 'help',
       aliases: ['h'],
       description: 'Show command help.',
-      usage: '!help [command]',
+      usage: '/help [command]',
       async handler(ctx) {
         const app = appFromCtx(ctx);
         const requested = ctx.args[0]?.toLowerCase();
@@ -29,10 +29,10 @@ const helpFeature: Feature = {
           const aliases = command.aliases?.length ? command.aliases.join(', ') : '-';
           await ctx.reply(
             [
-              `Command: !${command.name}`,
+              `Command: /${command.name}`,
               `Category: ${categoryTitle(entry.category)}`,
               `Description: ${command.description}`,
-              `Usage: ${command.usage ?? `!${command.name}`}`,
+              `Usage: ${command.usage ?? `/${command.name}`}`,
               `Aliases: ${aliases}`,
             ].join('\n'),
           );
@@ -46,7 +46,7 @@ const helpFeature: Feature = {
         }
 
         const lines = entries.map(
-          (entry) => `- !${entry.command.name}: ${entry.command.description}`,
+          (entry) => `- /${entry.command.name}: ${entry.command.description}`,
         );
         await ctx.reply(
           ['Available commands:', ...lines, usageLine(entries[0]?.command.name ?? 'ping')].join(

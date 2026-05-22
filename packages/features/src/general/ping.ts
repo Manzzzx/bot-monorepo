@@ -8,7 +8,7 @@ const pingFeature: Feature = {
       name: 'ping',
       aliases: ['p'],
       description: 'Check bot responsiveness.',
-      usage: '!ping',
+      usage: '/ping',
       async handler(ctx) {
         const latency = Math.max(0, Date.now() - ctx.timestamp);
         await ctx.reply(`pong (latency: ${latency}ms)`);

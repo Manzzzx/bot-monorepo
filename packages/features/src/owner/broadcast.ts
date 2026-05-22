@@ -46,11 +46,11 @@ const broadcastFeature: Feature = {
       name: 'broadcast',
       aliases: ['bc'],
       description: 'Broadcast a message to known users or groups.',
-      usage: '!broadcast [users|groups|all] <message>',
+      usage: '/broadcast [users|groups|all] <message>',
       async handler(ctx) {
         const parsed = parseBroadcast(ctx.args);
         if (!parsed) {
-          await ctx.reply('Usage: !broadcast [users|groups|all] <message>');
+          await ctx.reply('Usage: /broadcast [users|groups|all] <message>');
           return;
         }
 

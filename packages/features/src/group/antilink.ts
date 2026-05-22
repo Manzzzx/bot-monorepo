@@ -34,13 +34,13 @@ const antiLinkFeature: Feature = {
       name: 'antilink',
       aliases: ['anti-link'],
       description: 'Toggle group anti-link enforcement.',
-      usage: '!antilink [on|off]',
+      usage: '/antilink [on|off]',
       async handler(ctx) {
         const app = appFromCtx(ctx);
         const group = await ensureGroup(app, ctx);
         const next = parseToggle(ctx.args[0], group.config?.antiLink ?? false);
         if (next === null) {
-          await ctx.reply('Usage: !antilink [on|off]');
+          await ctx.reply('Usage: /antilink [on|off]');
           return;
         }
 

@@ -85,7 +85,7 @@ describe('createRouter', () => {
         },
       ],
     });
-    const ctx = createMockCtx({ text: '!ping hi --loud', traceId: '' });
+    const ctx = createMockCtx({ text: '/ping hi --loud', traceId: '' });
 
     await createRouter(app).dispatch(ctx);
 
@@ -108,7 +108,7 @@ describe('createRouter', () => {
 
   it('replies for unknown commands', async () => {
     const app = createMockApp();
-    const ctx = createMockCtx({ text: '!wat' });
+    const ctx = createMockCtx({ text: '/wat' });
 
     await createRouter(app).dispatch(ctx);
 
@@ -133,7 +133,7 @@ describe('createRouter', () => {
         },
       ],
     });
-    const ctx = createMockCtx({ text: '!secret' });
+    const ctx = createMockCtx({ text: '/secret' });
 
     await createRouter(app).dispatch(ctx);
 
@@ -155,7 +155,7 @@ describe('createRouter', () => {
         },
       ],
     });
-    const ctx = createMockCtx({ text: '!boom', traceId: 'trace-boom' });
+    const ctx = createMockCtx({ text: '/boom', traceId: 'trace-boom' });
 
     await createRouter(app).dispatch(ctx);
 

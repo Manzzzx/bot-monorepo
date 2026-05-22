@@ -44,7 +44,7 @@ function formatDueAt(date: Date): string {
 export async function createReminder(ctx: MessageCtx): Promise<void> {
   const parsed = parseReminderArgs(ctx.args);
   if (!parsed) {
-    await ctx.reply('Usage: !remind 10m drink water');
+    await ctx.reply('Usage: /remind 10m drink water');
     return;
   }
 
@@ -100,7 +100,7 @@ export async function listReminders(ctx: MessageCtx): Promise<void> {
 export async function cancelReminder(ctx: MessageCtx): Promise<void> {
   const reminderId = ctx.args[0];
   if (!reminderId) {
-    await ctx.reply('Usage: !cancelreminder <id>');
+    await ctx.reply('Usage: /cancelreminder <id>');
     return;
   }
 

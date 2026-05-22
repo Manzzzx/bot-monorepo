@@ -5,7 +5,7 @@ const categoryOrder: FeatureCategory[] = ['general', 'owner', 'group'];
 
 function commandLine(entry: RegisteredCommand): string {
   const aliases = entry.command.aliases?.length ? ` (${entry.command.aliases.join(', ')})` : '';
-  return `- !${entry.command.name}${aliases}: ${entry.command.description}`;
+  return `- /${entry.command.name}${aliases}: ${entry.command.description}`;
 }
 
 const menuFeature: Feature = {
@@ -16,7 +16,7 @@ const menuFeature: Feature = {
       name: 'menu',
       aliases: ['commands'],
       description: 'Show available commands.',
-      usage: '!menu',
+      usage: '/menu',
       async handler(ctx) {
         const app = appFromCtx(ctx);
         const grouped = app.registry.byCategory();

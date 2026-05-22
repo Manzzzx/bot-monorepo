@@ -9,13 +9,13 @@ const muteFeature: Feature = {
       name: 'mute',
       aliases: ['mutegroup'],
       description: 'Toggle group muted state.',
-      usage: '!mute [on|off]',
+      usage: '/mute [on|off]',
       async handler(ctx) {
         const app = appFromCtx(ctx);
         const group = await ensureGroup(app, ctx);
         const next = parseToggle(ctx.args[0], group.config?.muted ?? false);
         if (next === null) {
-          await ctx.reply('Usage: !mute [on|off]');
+          await ctx.reply('Usage: /mute [on|off]');
           return;
         }
 
