@@ -18,7 +18,7 @@ async function main(): Promise<void> {
 }
 
 main().catch(async (error) => {
-  const logger = createRootLogger({
+  const logger = await createRootLogger({
     env: process.env.NODE_ENV === 'production' ? 'production' : 'development',
   });
   logger.fatal({ status: 'fatal', err: error }, 'WA app failed to start');

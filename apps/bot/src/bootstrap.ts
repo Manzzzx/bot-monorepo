@@ -5,19 +5,19 @@ import { fileURLToPath } from 'node:url';
 
 const projectRoot = resolve(dirname(fileURLToPath(import.meta.url)), '..', '..', '..');
 
-const nodeEnv = process.env.NODE_ENV ?? 'development';
-const envCandidates = [
-  `.env.${nodeEnv}.local`,
-  nodeEnv !== 'test' ? '.env.local' : null,
-  `.env.${nodeEnv}`,
-  '.env',
-].filter((value): value is string => value !== null);
+loadDotenv({ path: resolve(projectRoot, '.env'), quiet: true });
 
-for (const candidate of envCandidates) {
-  loadDotenv({ path: resolve(projectRoot, candidate), quiet: true });
+const FALLBACK_TZ = 'Asia/Jakarta';
+const requestedTz = (process.env.TZ ?? FALLBACK_TZ).trim() || FALLBACK_TZ;
+try {
+  new Intl.DateTimeFormat('en-US', { timeZone: requestedTz });
+  process.env.TZ = requestedTz;
+} catch {
+  process.stderr.write(
+    `[bootstrap] Invalid TZ='${requestedTz}' (not an IANA name). Falling back to '${FALLBACK_TZ}'.\n`,
+  );
+  process.env.TZ = FALLBACK_TZ;
 }
-
-process.env.TZ = process.env.TZ ?? 'Asia/Jakarta';
 
 const rawDbUrl = process.env.DATABASE_URL;
 if (rawDbUrl?.startsWith('file:')) {
@@ -78,12 +78,13 @@ export async function bootstrap(options: BootstrapOptions = {}): Promise<Bootstr
   const config = options.config ?? loadConfig();
   const logger =
     options.logger ??
-    createRootLogger({
+    (await createRootLogger({
       level: config.LOG_LEVEL,
       env: config.NODE_ENV,
       logDir: config.LOG_DIR,
       noColor: config.LOG_NO_COLOR,
-    });
+      logPii: config.LOG_PII,
+    }));
 
   for (const warning of getConfigWarnings(config)) logger.warn({ status: 'rejected' }, warning);
 

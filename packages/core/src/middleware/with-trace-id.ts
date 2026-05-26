@@ -7,8 +7,11 @@ export function withTraceId(): Middleware {
     ctx.logger = ctx.logger.child({
       traceId: ctx.traceId,
       platform: ctx.platform,
+      chatType: ctx.chatType,
       chatId: ctx.chatId,
+      ...(ctx.chatName ? { chatName: ctx.chatName } : {}),
       userId: ctx.userId,
+      ...(ctx.userName ? { userName: ctx.userName } : {}),
     });
     await next();
   };

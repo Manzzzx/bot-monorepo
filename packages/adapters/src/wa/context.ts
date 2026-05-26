@@ -90,6 +90,31 @@ function isGroupChat(chatId: string): boolean {
   return chatId.endsWith('@g.us');
 }
 
+const groupNameCache = new Map<string, { name: string; expiresAt: number }>();
+const GROUP_NAME_TTL_MS = 5 * 60 * 1000;
+
+async function fetchGroupName(socket: WASocket, chatId: string): Promise<string | undefined> {
+  const cached = groupNameCache.get(chatId);
+  if (cached && cached.expiresAt > Date.now()) return cached.name;
+  try {
+    const meta = (await socket.groupMetadata(chatId)) as { subject?: string };
+    const name = typeof meta?.subject === 'string' && meta.subject ? meta.subject : undefined;
+    if (name) groupNameCache.set(chatId, { name, expiresAt: Date.now() + GROUP_NAME_TTL_MS });
+    return name;
+  } catch {
+    return undefined;
+  }
+}
+
+export function primeWaGroupName(chatId: string, name: string): void {
+  if (!chatId || !name) return;
+  groupNameCache.set(chatId, { name, expiresAt: Date.now() + GROUP_NAME_TTL_MS });
+}
+
+export function clearWaGroupCache(): void {
+  groupNameCache.clear();
+}
+
 async function scheduleSend(
   app: Pick<AppContext, 'rateLimit'>,
   chatId: string,
@@ -102,13 +127,28 @@ export function createWaMessageCtx(deps: WaCtxDeps, message: WAMessage): Message
   const chatId = chatIdOf(message);
   const userId = userIdOf(message);
   const isGroup = isGroupChat(chatId);
+  const chatType: 'private' | 'group' = isGroup ? 'group' : 'private';
+  const userName =
+    typeof message.pushName === 'string' && message.pushName ? message.pushName : undefined;
+  const chatName = isGroup ? groupNameCache.get(chatId)?.name : undefined;
+  if (isGroup && !chatName) {
+    void fetchGroupName(deps.socket, chatId);
+  }
   const text = extractText(message);
   const mediaRef = buildMediaRef(message, deps.logger);
   const traceId = ulid();
   const messageId = message.key.id ?? traceId;
   const timestamp = Number(message.messageTimestamp ?? Math.floor(Date.now() / 1000)) * 1000;
 
-  const childLogger = deps.logger.child({ platform: PLATFORM, chatId, userId, messageId });
+  const childLogger = deps.logger.child({
+    platform: PLATFORM,
+    chatId,
+    chatType,
+    ...(chatName ? { chatName } : {}),
+    userId,
+    ...(userName ? { userName } : {}),
+    messageId,
+  });
 
   const ctx: MessageCtx<WAMessage> = {
     platform: PLATFORM,
@@ -116,6 +156,9 @@ export function createWaMessageCtx(deps: WaCtxDeps, message: WAMessage): Message
     chatId,
     userId,
     isGroup,
+    chatType,
+    ...(chatName ? { chatName } : {}),
+    ...(userName ? { userName } : {}),
     timestamp,
     capabilities: WA_CAPABILITIES,
     text,

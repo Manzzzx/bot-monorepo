@@ -19,12 +19,30 @@ const optionalNonEmptyString = z.preprocess((value) => {
   return value;
 }, z.string().optional());
 
+export function isValidTimezone(tz: string): boolean {
+  try {
+    new Intl.DateTimeFormat('en-US', { timeZone: tz });
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+const tzSchema = z
+  .string()
+  .default('Asia/Jakarta')
+  .refine(isValidTimezone, {
+    message: 'Invalid IANA timezone. Examples: Asia/Jakarta, Asia/Singapore, UTC, America/New_York.',
+  });
+
 export const ConfigSchema = z
   .object({
     NODE_ENV: z.enum(nodeEnvValues).default('development'),
+    TZ: tzSchema,
     LOG_LEVEL: z.enum(logLevelValues).default('info'),
     LOG_DIR: z.string().default('/home/container/data/log'),
     LOG_NO_COLOR: booleanSchema.default(false),
+    LOG_PII: booleanSchema.default(false),
     DATABASE_URL: z.string().default('file:/home/container/data/bot.db'),
     AUTH_ENCRYPTION_KEY: z.string().regex(/^[a-f0-9]{64}$/, '32-byte hex required'),
     WA_ENABLED: booleanSchema.default(true),

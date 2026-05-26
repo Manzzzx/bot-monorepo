@@ -20,7 +20,12 @@ async function readLogRecords(logDir: string): Promise<Array<Record<string, unkn
 describe('createRootLogger', () => {
   it('writes a JSON file event with eventId, status, and traceId', async () => {
     const logDir = await mkdtemp(join(tmpdir(), 'bot-logs-'));
-    const logger = createRootLogger({ level: 'info', env: 'production', logDir, noColor: true });
+    const logger = await createRootLogger({
+      level: 'info',
+      env: 'production',
+      logDir,
+      noColor: true,
+    });
 
     logger.info({ traceId: 'trace-1', platform: 'wa', feature: 'general/ping' }, 'handled');
     await flushLogs(logger);
@@ -33,7 +38,12 @@ describe('createRootLogger', () => {
 
   it('flushes error and fatal paths', async () => {
     const logDir = await mkdtemp(join(tmpdir(), 'bot-logs-'));
-    const logger = createRootLogger({ level: 'info', env: 'production', logDir, noColor: true });
+    const logger = await createRootLogger({
+      level: 'info',
+      env: 'production',
+      logDir,
+      noColor: true,
+    });
 
     logger.error({ traceId: 'trace-error', status: 'error' }, 'recoverable');
     logger.fatal({ traceId: 'trace-fatal', status: 'fatal' }, 'unrecoverable');

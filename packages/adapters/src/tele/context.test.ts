@@ -46,6 +46,7 @@ describe('createTeleMessageCtx', () => {
     expect(ctx.userId).toBe('7');
     expect(ctx.text).toBe('/ping');
     expect(ctx.isGroup).toBe(false);
+    expect(ctx.chatType).toBe('private');
     expect(ctx.capabilities).toMatchObject({
       buttons: true,
       list: true,
@@ -55,5 +56,26 @@ describe('createTeleMessageCtx', () => {
 
     await ctx.reply('hi');
     expect(sendMessage).toHaveBeenCalledWith('123', 'hi', {});
+  });
+
+  it('captures username and chatName for group updates', () => {
+    const update = {
+      message: {
+        message_id: 99,
+        chat: { id: -1001234567890, type: 'supergroup', title: 'Bot Test' },
+        from: { id: 42, is_bot: false, username: 'Mannn678', first_name: 'Manzz' },
+        date: 1700000000,
+        text: '/stats',
+      },
+      api: { sendMessage: vi.fn() },
+    } as unknown as GrammyContext;
+
+    const app = makeApp();
+    const ctx = createTeleMessageCtx({ app }, update);
+
+    expect(ctx.chatType).toBe('group');
+    expect(ctx.chatName).toBe('Bot Test');
+    expect(ctx.userName).toBe('Mannn678');
+    expect(ctx.isGroup).toBe(true);
   });
 });

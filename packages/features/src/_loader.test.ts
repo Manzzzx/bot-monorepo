@@ -44,9 +44,11 @@ function createMockApp(): AppContext {
   const app = {
     config: {
       NODE_ENV: 'test',
+      TZ: 'Asia/Jakarta',
       LOG_LEVEL: 'error',
       LOG_DIR: '.',
       LOG_NO_COLOR: true,
+      LOG_PII: false,
       DATABASE_URL: 'file:test.db',
       AUTH_ENCRYPTION_KEY: 'a'.repeat(64),
       WA_ENABLED: true,

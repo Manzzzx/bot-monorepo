@@ -39,12 +39,17 @@ export interface ReplyOpts {
   buttons?: ReplyButton[][] | undefined;
 }
 
+export type ChatType = 'private' | 'group';
+
 export interface MessageCtx<TRaw = unknown> {
   platform: Platform;
   messageId: string;
   chatId: string;
   userId: string;
   isGroup: boolean;
+  chatType: ChatType;
+  chatName?: string | undefined;
+  userName?: string | undefined;
   timestamp: number;
   capabilities: PlatformCapabilities;
   text: string;

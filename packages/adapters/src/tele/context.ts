@@ -125,11 +125,28 @@ export function createTeleMessageCtx(
   const chatId = String(message.chat.id);
   const userId = String(message.from?.id ?? message.chat.id);
   const isGroup = message.chat.type === 'group' || message.chat.type === 'supergroup';
+  const chatType: 'private' | 'group' = isGroup ? 'group' : 'private';
+  const chatName =
+    'title' in message.chat && typeof message.chat.title === 'string' && message.chat.title
+      ? message.chat.title
+      : undefined;
+  const userName =
+    message.from?.username ??
+    [message.from?.first_name, message.from?.last_name].filter(Boolean).join(' ') ??
+    undefined;
   const text = extractText(update);
   const traceId = ulid();
   const messageId = String(message.message_id);
   const timestamp = message.date * 1000;
-  const childLogger = deps.app.logger.child({ platform: PLATFORM, chatId, userId, messageId });
+  const childLogger = deps.app.logger.child({
+    platform: PLATFORM,
+    chatId,
+    chatType,
+    ...(chatName ? { chatName } : {}),
+    userId,
+    ...(userName ? { userName } : {}),
+    messageId,
+  });
   const mediaRef = buildMediaRef(update);
 
   const optionalProps: Partial<MessageCtx<GrammyContext>> = {};
@@ -143,6 +160,9 @@ export function createTeleMessageCtx(
     chatId,
     userId,
     isGroup,
+    chatType,
+    ...(chatName ? { chatName } : {}),
+    ...(userName ? { userName } : {}),
     timestamp,
     capabilities: TELE_CAPABILITIES,
     text,
@@ -231,13 +251,27 @@ export function createTeleCallbackCtx(
   const chatId = String(cb.message.chat.id);
   const userId = String(cb.from.id);
   const isGroup = cb.message.chat.type === 'group' || cb.message.chat.type === 'supergroup';
+  const chatType: 'private' | 'group' = isGroup ? 'group' : 'private';
+  const chatName =
+    'title' in cb.message.chat &&
+    typeof cb.message.chat.title === 'string' &&
+    cb.message.chat.title
+      ? cb.message.chat.title
+      : undefined;
+  const userName =
+    cb.from.username ??
+    [cb.from.first_name, cb.from.last_name].filter(Boolean).join(' ') ??
+    undefined;
   const traceId = ulid();
   const triggerMessageId = String(cb.message.message_id);
   const timestamp = Date.now();
   const childLogger = deps.app.logger.child({
     platform: PLATFORM,
     chatId,
+    chatType,
+    ...(chatName ? { chatName } : {}),
     userId,
+    ...(userName ? { userName } : {}),
     messageId: triggerMessageId,
     via: 'callback',
   });
@@ -262,6 +296,9 @@ export function createTeleCallbackCtx(
     chatId,
     userId,
     isGroup,
+    chatType,
+    ...(chatName ? { chatName } : {}),
+    ...(userName ? { userName } : {}),
     timestamp,
     capabilities: TELE_CAPABILITIES,
     text: command.startsWith('/') || command.startsWith('.') ? command : `/${command}`,

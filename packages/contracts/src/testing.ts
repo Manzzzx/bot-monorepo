@@ -9,6 +9,7 @@ export function createMockCtx(overrides: Partial<MessageCtx> = {}): MessageCtx {
     chatId: 'chat-1',
     userId: 'user-1',
     isGroup: false,
+    chatType: 'private',
     timestamp: Date.now(),
     capabilities: {
       buttons: false,

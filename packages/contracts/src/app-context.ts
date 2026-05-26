@@ -9,9 +9,11 @@ export type LogLevel = 'trace' | 'debug' | 'info' | 'warn' | 'error';
 
 export interface AppConfig {
   NODE_ENV: NodeEnv;
+  TZ: string;
   LOG_LEVEL: LogLevel;
   LOG_DIR: string;
   LOG_NO_COLOR: boolean;
+  LOG_PII: boolean;
   DATABASE_URL: string;
   AUTH_ENCRYPTION_KEY: string;
   WA_ENABLED: boolean;

@@ -9,9 +9,11 @@ describe('loadConfig', () => {
 
     expect(config).toMatchObject({
       NODE_ENV: 'development',
+      TZ: 'Asia/Jakarta',
       LOG_LEVEL: 'info',
       LOG_DIR: '/home/container/data/log',
       LOG_NO_COLOR: false,
+      LOG_PII: false,
       DATABASE_URL: 'file:/home/container/data/bot.db',
       AUTH_ENCRYPTION_KEY: key,
       WA_ENABLED: true,
@@ -42,5 +44,26 @@ describe('loadConfig', () => {
       'WA_ENABLED=true but OWNER_WA is missing; WA owner commands will be disabled.',
       'TELE_ENABLED=true but OWNER_TG is missing; Telegram owner commands will be disabled.',
     ]);
+  });
+
+
+  it('accepts custom IANA timezone', () => {
+    const config = loadConfig({
+      AUTH_ENCRYPTION_KEY: key,
+      TELEGRAM_BOT_TOKEN: 'token',
+      TZ: 'Asia/Singapore',
+    });
+    expect(config.TZ).toBe('Asia/Singapore');
+  });
+
+  it('rejects invalid IANA timezone', () => {
+    expect(() =>
+      loadConfig({ AUTH_ENCRYPTION_KEY: key, TELEGRAM_BOT_TOKEN: 'token', TZ: 'Asai/Jakarta' }),
+    ).toThrow(/Invalid IANA timezone/i);
+  });
+
+  it('falls back to Asia/Jakarta when TZ is unset', () => {
+    const config = loadConfig({ AUTH_ENCRYPTION_KEY: key, TELEGRAM_BOT_TOKEN: 'token' });
+    expect(config.TZ).toBe('Asia/Jakarta');
   });
 });

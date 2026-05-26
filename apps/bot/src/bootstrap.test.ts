@@ -33,6 +33,8 @@ describe('bootstrap', () => {
 
     const config: BootstrapConfig = {
       NODE_ENV: 'test',
+      TZ: 'Asia/Jakarta',
+      LOG_PII: false,
       LOG_LEVEL: 'error',
       LOG_DIR: 'C:/tmp',
       LOG_NO_COLOR: true,

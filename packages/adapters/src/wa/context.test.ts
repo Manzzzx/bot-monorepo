@@ -41,6 +41,8 @@ describe('createWaMessageCtx', () => {
     expect(ctx.chatId).toBe('6281@s.whatsapp.net');
     expect(ctx.text).toBe('!ping');
     expect(ctx.isGroup).toBe(false);
+    expect(ctx.chatType).toBe('private');
+    expect(ctx.chatName).toBeUndefined();
     expect(ctx.capabilities).toMatchObject({
       buttons: false,
       list: false,
@@ -50,5 +52,47 @@ describe('createWaMessageCtx', () => {
 
     await ctx.reply('hi');
     expect(sendMessage).toHaveBeenCalledWith('6281@s.whatsapp.net', { text: 'hi' }, {});
+  });
+
+  it('captures pushName as userName for private chats', () => {
+    const sendMessage = vi.fn();
+    const socket = { sendMessage } as unknown as WASocket;
+    const message = {
+      key: { remoteJid: '6289@s.whatsapp.net', id: 'wa-2', fromMe: false },
+      messageTimestamp: 1000,
+      message: { conversation: 'halo' },
+      pushName: 'Manzz',
+    } as unknown as WAMessage;
+
+    const app = makeApp();
+    const ctx = createWaMessageCtx({ socket, app, logger: app.logger }, message);
+
+    expect(ctx.userName).toBe('Manzz');
+    expect(ctx.chatType).toBe('private');
+  });
+
+  it('flags group chats and triggers async groupMetadata fetch', async () => {
+    const sendMessage = vi.fn();
+    const groupMetadata = vi.fn().mockResolvedValue({ subject: 'Sat Set Meet' });
+    const socket = { sendMessage, groupMetadata } as unknown as WASocket;
+    const message = {
+      key: {
+        remoteJid: '120363021987654321@g.us',
+        id: 'wa-3',
+        fromMe: false,
+        participant: '6289@s.whatsapp.net',
+      },
+      messageTimestamp: 1000,
+      message: { conversation: '/everyone' },
+      pushName: 'Manzz',
+    } as unknown as WAMessage;
+
+    const app = makeApp();
+    const ctx = createWaMessageCtx({ socket, app, logger: app.logger }, message);
+
+    expect(ctx.chatType).toBe('group');
+    expect(ctx.userId).toBe('6289@s.whatsapp.net');
+    await new Promise((r) => setImmediate(r));
+    expect(groupMetadata).toHaveBeenCalledWith('120363021987654321@g.us');
   });
 });
