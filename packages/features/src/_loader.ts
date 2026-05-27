@@ -19,6 +19,19 @@ import ytmp4Feature from './downloader/ytmp4.js';
 import spotifyFeature from './downloader/spotify.js';
 import pinterestFeature from './downloader/pinterest.js';
 import sfileFeature from './downloader/sfile.js';
+import igstalkFeature from './stalker/igstalk.js';
+import ttstalkFeature from './stalker/ttstalk.js';
+import ghstalkFeature from './stalker/ghstalk.js';
+import twitterstalkFeature from './stalker/twitterstalk.js';
+import threadsstalkFeature from './stalker/threadsstalk.js';
+import pinstalkFeature from './stalker/pinstalk.js';
+import ytstalkFeature from './stalker/ytstalk.js';
+import robloxstalkFeature from './stalker/robloxstalk.js';
+import fbstalkFeature from './stalker/fbstalk.js';
+import ffstalkFeature from './stalker/ffstalk.js';
+import mlstalkFeature from './stalker/mlstalk.js';
+import pixivstalkFeature from './stalker/pixivstalk.js';
+import wastalkFeature from './stalker/wastalk.js';
 import broadcastFeature from './owner/broadcast.js';
 import evalFeature from './owner/eval.js';
 import shutdownFeature from './owner/shutdown.js';
@@ -84,7 +97,21 @@ export const staticFeatureRegistry = {
     { baseName: 'pinterest', feature: pinterestFeature },
     { baseName: 'sfile', feature: sfileFeature },
   ],
-  stalker: [],
+  stalker: [
+    { baseName: 'igstalk', feature: igstalkFeature },
+    { baseName: 'ttstalk', feature: ttstalkFeature },
+    { baseName: 'ghstalk', feature: ghstalkFeature },
+    { baseName: 'twitterstalk', feature: twitterstalkFeature },
+    { baseName: 'threadsstalk', feature: threadsstalkFeature },
+    { baseName: 'pinstalk', feature: pinstalkFeature },
+    { baseName: 'ytstalk', feature: ytstalkFeature },
+    { baseName: 'robloxstalk', feature: robloxstalkFeature },
+    { baseName: 'fbstalk', feature: fbstalkFeature },
+    { baseName: 'ffstalk', feature: ffstalkFeature },
+    { baseName: 'mlstalk', feature: mlstalkFeature },
+    { baseName: 'pixivstalk', feature: pixivstalkFeature },
+    { baseName: 'wastalk', feature: wastalkFeature },
+  ],
 } as const satisfies StaticFeatureRegistry;
 
 function isCategory(value: string): value is FeatureCategory {
