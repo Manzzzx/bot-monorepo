@@ -12,4 +12,12 @@ export const userRepo = {
       create: { platform, externalId },
     });
   },
+
+  findByExternal(prisma: PrismaRepoClient, platform: Platform, externalId: string) {
+    return prisma.user.findUnique({
+      where: {
+        platform_externalId: { platform, externalId },
+      },
+    });
+  },
 };
