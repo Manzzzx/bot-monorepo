@@ -21,6 +21,7 @@ export interface WaAdapter extends MessageAdapter {
   stop(): Promise<void>;
   pause(): void;
   resume(): void;
+  isGroupAdmin(chatId: string, userId: string): Promise<boolean>;
 }
 
 export function createWaAdapter(options: WaAdapterOptions): WaAdapter {
@@ -156,6 +157,23 @@ export function createWaAdapter(options: WaAdapterOptions): WaAdapter {
     if (started && !socket) void connect();
   }
 
+  async function isGroupAdmin(chatId: string, userId: string): Promise<boolean> {
+    if (!socket) return false;
+    if (!chatId.endsWith('@g.us')) return false;
+    try {
+      const meta = (await socket.groupMetadata(chatId)) as {
+        participants?: Array<{ id?: string; admin?: string | null }>;
+      };
+      const participants = meta.participants ?? [];
+      return participants.some(
+        (p) => p.id === userId && (p.admin === 'admin' || p.admin === 'superadmin'),
+      );
+    } catch (error) {
+      logger.warn({ err: error, status: 'rejected', chatId }, 'WA isGroupAdmin lookup failed');
+      return false;
+    }
+  }
+
   return {
     platform: PLATFORM,
     async sendMessage(chatId: string, text: string, opts?: ReplyOpts): Promise<void> {
@@ -171,6 +189,7 @@ export function createWaAdapter(options: WaAdapterOptions): WaAdapter {
     stop,
     pause,
     resume,
+    isGroupAdmin,
   };
 }
 

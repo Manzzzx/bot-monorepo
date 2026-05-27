@@ -144,5 +144,14 @@ export function createTeleAdapter(options: TeleAdapterOptions): TeleAdapter {
     resume: () => {
       paused = false;
     },
+    async isGroupAdmin(chatId: string, userId: string): Promise<boolean> {
+      try {
+        const member = await bot.api.getChatMember(chatId, Number(userId));
+        return member.status === 'administrator' || member.status === 'creator';
+      } catch (error) {
+        logger.warn({ err: error, status: 'rejected', chatId }, 'Telegram isGroupAdmin lookup failed');
+        return false;
+      }
+    },
   };
 }
