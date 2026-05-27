@@ -1,26 +1,144 @@
 import type { Feature, FeatureCategory, RegisteredCommand, ReplyButton } from '@bot/contracts';
 import { reply } from '@bot/contracts';
-import { appFromCtx, canSeeCommand, categoryTitle } from './_registry.js';
+import {
+  appFromCtx,
+  canSeeCommand,
+  categoryEmoji,
+  categoryTitle,
+  commandEmoji,
+} from './_registry.js';
 
-const categoryOrder: FeatureCategory[] = ['general', 'owner', 'group'];
-const MAX_BUTTON_ROWS = 8;
+const CATEGORY_ORDER: FeatureCategory[] = [
+  'general',
+  'downloader',
+  'stalker',
+  'group',
+  'owner',
+];
 
-function commandLine(entry: RegisteredCommand): string {
-  const aliases = entry.command.aliases?.length ? ` (${entry.command.aliases.join(', ')})` : '';
-  return `- /${entry.command.name}${aliases}: ${entry.command.description}`;
+const CATEGORY_ALIASES: Record<string, FeatureCategory> = {
+  general: 'general',
+  ['umum']: 'general',
+  downloader: 'downloader',
+  ['dl']: 'downloader',
+  stalker: 'stalker',
+  ['stalk']: 'stalker',
+  group: 'group',
+  ['grup']: 'group',
+  owner: 'owner',
+};
+
+const DIVIDER = '━━━━━━━━━━━━━━━━━━━━━';
+
+function entriesByCategory(
+  app: ReturnType<typeof appFromCtx>,
+  ctx: Parameters<typeof canSeeCommand>[1],
+): Map<FeatureCategory, RegisteredCommand[]> {
+  const grouped = app.registry.byCategory();
+  const result = new Map<FeatureCategory, RegisteredCommand[]>();
+  for (const category of CATEGORY_ORDER) {
+    const list = (grouped[category] ?? [])
+      .filter((entry) => canSeeCommand(entry, ctx, app))
+      .sort((a, b) => a.command.name.localeCompare(b.command.name));
+    if (list.length > 0) result.set(category, list);
+  }
+  return result;
 }
 
-function buildMenuButtons(entries: RegisteredCommand[]): ReplyButton[][] {
+function buildOverview(byCategory: Map<FeatureCategory, RegisteredCommand[]>): string {
+  const total = [...byCategory.values()].reduce((sum, list) => sum + list.length, 0);
+  const lines = [
+    '📋 *MENU UTAMA*',
+    DIVIDER,
+    `Total ${total} command tersedia.`,
+    'Pilih kategori di bawah atau ketik `/menu <kategori>`.',
+    '',
+  ];
+  for (const [category, list] of byCategory) {
+    const count = list.length.toString().padStart(2, ' ');
+    lines.push(`${categoryEmoji(category)} *${categoryTitle(category)}* — ${count} command`);
+  }
+  lines.push('');
+  lines.push(DIVIDER);
+  lines.push('Tap kategori untuk lihat detail.');
+  return lines.join('\n');
+}
+
+function buildCategoryView(
+  category: FeatureCategory,
+  list: RegisteredCommand[],
+): string {
+  const lines = [
+    `${categoryEmoji(category)} *${categoryTitle(category).toUpperCase()}*`,
+    DIVIDER,
+    `${list.length} command tersedia.`,
+    '',
+  ];
+  for (const entry of list) {
+    const aliases = entry.command.aliases?.length
+      ? ` _( ${entry.command.aliases.join(', ')} )_`
+      : '';
+    lines.push(
+      `${commandEmoji(entry.command.name)} \`/${entry.command.name}\`${aliases}`,
+    );
+    if (entry.command.description) {
+      lines.push(`   ${entry.command.description}`);
+    }
+  }
+  lines.push('');
+  lines.push(DIVIDER);
+  lines.push('Tip: `/help <command>` untuk detail.');
+  return lines.join('\n');
+}
+
+function categoryButtons(
+  byCategory: Map<FeatureCategory, RegisteredCommand[]>,
+): ReplyButton[][] {
+  const cats = [...byCategory.keys()];
   const rows: ReplyButton[][] = [];
-  for (let i = 0; i < entries.length && rows.length < MAX_BUTTON_ROWS; i += 2) {
-    const a = entries[i];
-    const b = entries[i + 1];
+  for (let i = 0; i < cats.length; i += 2) {
+    const a = cats[i];
+    const b = cats[i + 1];
     const row: ReplyButton[] = [];
-    if (a) row.push({ label: a.command.name, command: a.command.name });
-    if (b) row.push({ label: b.command.name, command: b.command.name });
+    if (a) {
+      row.push({
+        label: `${categoryEmoji(a)} ${categoryTitle(a)}`,
+        command: `menu ${a}`,
+      });
+    }
+    if (b) {
+      row.push({
+        label: `${categoryEmoji(b)} ${categoryTitle(b)}`,
+        command: `menu ${b}`,
+      });
+    }
     rows.push(row);
   }
-  rows.push([{ label: '❓ Help', command: 'help' }]);
+  rows.push([
+    { label: '❓ Help', command: 'help' },
+    { label: '🏓 Ping', command: 'ping' },
+  ]);
+  return rows;
+}
+
+function commandButtons(
+  list: RegisteredCommand[],
+  category: FeatureCategory,
+): ReplyButton[][] {
+  const rows: ReplyButton[][] = [];
+  const limited = list.slice(0, 14);
+  for (let i = 0; i < limited.length; i += 2) {
+    const a = limited[i];
+    const b = limited[i + 1];
+    const row: ReplyButton[] = [];
+    if (a) row.push({ label: `${commandEmoji(a.command.name)} ${a.command.name}`, command: a.command.name });
+    if (b) row.push({ label: `${commandEmoji(b.command.name)} ${b.command.name}`, command: b.command.name });
+    rows.push(row);
+  }
+  rows.push([
+    { label: '⬅ Menu', command: 'menu' },
+    { label: '❓ Help', command: `help ${category}` },
+  ]);
   return rows;
 }
 
@@ -32,24 +150,35 @@ const menuFeature: Feature = {
       name: 'menu',
       aliases: ['commands'],
       description: 'Show available commands.',
-      usage: '/menu',
+      usage: '/menu [category]',
+      examples: ['/menu', '/menu downloader', '/menu stalker'],
       async handler(ctx) {
         const app = appFromCtx(ctx);
-        const grouped = app.registry.byCategory();
-        const allVisible: RegisteredCommand[] = [];
-        const sections = categoryOrder
-          .map((category) => {
-            const entries = grouped[category]
-              .filter((entry) => canSeeCommand(entry, ctx, app))
-              .sort((left, right) => left.command.name.localeCompare(right.command.name));
-            if (entries.length === 0) return '';
-            allVisible.push(...entries);
-            return [`${categoryTitle(category)}:`, ...entries.map(commandLine)].join('\n');
-          })
-          .filter(Boolean);
+        const byCategory = entriesByCategory(app, ctx);
+        if (byCategory.size === 0) {
+          await reply(ctx, 'No commands available.', { backTo: false });
+          return;
+        }
 
-        await reply(ctx, sections.length ? sections.join('\n\n') : 'No commands available.', {
-          buttons: allVisible.length > 0 ? buildMenuButtons(allVisible) : undefined,
+        const requested = ctx.args[0]?.toLowerCase();
+        if (requested && CATEGORY_ALIASES[requested]) {
+          const target = CATEGORY_ALIASES[requested];
+          const list = byCategory.get(target);
+          if (!list) {
+            await reply(ctx, `Kategori ${categoryTitle(target)} kosong.`, { backTo: 'menu' });
+            return;
+          }
+          await reply(ctx, buildCategoryView(target, list), {
+            parseMode: 'markdown',
+            buttons: commandButtons(list, target),
+            backTo: false,
+          });
+          return;
+        }
+
+        await reply(ctx, buildOverview(byCategory), {
+          parseMode: 'markdown',
+          buttons: categoryButtons(byCategory),
           backTo: false,
         });
       },

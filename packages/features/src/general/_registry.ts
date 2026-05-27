@@ -22,6 +22,59 @@ export function categoryTitle(category: FeatureCategory): string {
   return category;
 }
 
+export function categoryEmoji(category: FeatureCategory): string {
+  if (category === 'general') return '✨';
+  if (category === 'owner') return '👑';
+  if (category === 'group') return '👥';
+  if (category === 'downloader') return '⬇️';
+  if (category === 'stalker') return '🔍';
+  return '📋';
+}
+
+const commandEmojiMap: Record<string, string> = {
+  ping: '🏓',
+  help: '❓',
+  menu: '📋',
+  start: '🚀',
+  stats: '📊',
+  remind: '⏰',
+  reminders: '📅',
+  cancelreminder: '🗑️',
+  kick: '🚪',
+  mute: '🔇',
+  antilink: '🔗',
+  welcome: '👋',
+  eval: '⚙️',
+  broadcast: '📢',
+  shutdown: '🛑',
+  tiktok: '🎬',
+  igdl: '📷',
+  fbdl: '📘',
+  twitter: '🐦',
+  ytmp3: '🎵',
+  ytmp4: '📺',
+  spotify: '🎧',
+  pinterest: '📌',
+  sfile: '📁',
+  igstalk: '📷',
+  ttstalk: '🎬',
+  ghstalk: '💻',
+  twitterstalk: '🐦',
+  threadsstalk: '🧵',
+  pinstalk: '📌',
+  ytstalk: '📺',
+  robloxstalk: '🟥',
+  fbstalk: '📘',
+  ffstalk: '🔥',
+  mlstalk: '⚔️',
+  pixivstalk: '🎨',
+  wastalk: '💬',
+};
+
+export function commandEmoji(name: string): string {
+  return commandEmojiMap[name] ?? '•';
+}
+
 export function canSeeCommand(
   entry: RegisteredCommand,
   ctx: MessageCtx,

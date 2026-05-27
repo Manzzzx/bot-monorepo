@@ -6,6 +6,8 @@ type DbHealth = {
   $queryRawUnsafe?: (query: string) => Promise<unknown>;
 };
 
+const DIVIDER = '━━━━━━━━━━━━━━━━━━━━━';
+
 const statsButtons: ReplyButton[][] = [
   [
     { label: '🔄 Refresh', command: 'stats' },
@@ -33,12 +35,12 @@ function formatBytes(bytes: number): string {
 
 async function dbStatus(db: unknown): Promise<string> {
   const candidate = db as DbHealth;
-  if (typeof candidate.$queryRawUnsafe !== 'function') return 'unavailable';
+  if (typeof candidate.$queryRawUnsafe !== 'function') return '⚪ unavailable';
   try {
     await candidate.$queryRawUnsafe('SELECT 1');
-    return 'ok';
+    return '🟢 ok';
   } catch {
-    return 'error';
+    return '🔴 error';
   }
 }
 
@@ -56,21 +58,25 @@ const statsFeature: Feature = {
         const commands = app.registry.list();
         const featureCount = new Set(commands.map((entry) => entry.feature.name)).size;
         const memory = formatBytes(process.memoryUsage().rss);
-        const status = await dbStatus(app.db);
+        const dbState = await dbStatus(app.db);
 
-        await reply(
-          ctx,
-          [
-            'Bot stats',
-            `uptime: ${formatDuration(process.uptime())}`,
-            `memory: ${memory}`,
-            `node: ${process.version}`,
-            `features: ${featureCount}`,
-            `commands: ${commands.length}`,
-            `db: ${status}`,
-          ].join('\n'),
-          { buttons: statsButtons, backTo: false },
-        );
+        const lines = [
+          '📊 *BOT STATS*',
+          DIVIDER,
+          `⏰ *Uptime:* \`${formatDuration(process.uptime())}\``,
+          `💾 *Memory:* \`${memory}\``,
+          `⚙️ *Node:* \`${process.version}\``,
+          `🧩 *Features:* \`${featureCount}\``,
+          `🛠️ *Commands:* \`${commands.length}\``,
+          `🗄️ *Database:* ${dbState}`,
+          `🌐 *Platform:* \`${ctx.platform}\``,
+        ];
+
+        await reply(ctx, lines.join('\n'), {
+          parseMode: 'markdown',
+          buttons: statsButtons,
+          backTo: false,
+        });
       },
     },
   ],
