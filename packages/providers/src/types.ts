@@ -41,6 +41,7 @@ export interface DownloadQuery {
 
 export interface StalkQuery {
   username: string;
+  extra?: Record<string, string>;
 }
 
 export type DownloaderResult = z.infer<typeof DownloaderResultSchema>;
