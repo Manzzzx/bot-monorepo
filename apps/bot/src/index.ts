@@ -1,15 +1,20 @@
 import { createRootLogger, flushLogs } from '@bot/utils';
 import { bootstrap } from './bootstrap.js';
-import { installSignalHandlers } from './shutdown.js';
+import { installSignalHandlers, performShutdown } from './shutdown.js';
 
 async function main(): Promise<void> {
   const result = await bootstrap();
-  installSignalHandlers({
+  const shutdownOpts = {
     logger: result.app.logger,
     prisma: result.prisma,
     scheduler: result.scheduler,
     adapters: result.adapters,
+  };
+  result.setShutdown(async (reason) => {
+    result.app.logger.info({ status: 'ok', reason }, 'Shutdown requested via app.shutdown');
+    await performShutdown({ ...shutdownOpts, exitCode: 0 });
   });
+  installSignalHandlers(shutdownOpts);
 }
 
 main().catch(async (error) => {

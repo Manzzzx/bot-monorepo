@@ -40,7 +40,7 @@ export default [
     },
   },
   {
-    files: ['packages/utils/src/logger.ts'],
+    files: ['packages/utils/src/logger.ts', 'apps/bot/src/bootstrap.ts'],
     rules: {
       'no-console': 'off',
       'no-restricted-properties': 'off',
