@@ -16,7 +16,10 @@ export function isOwner(ctx: MessageCtx, app: Pick<AppContext, 'config'>): boole
 export function categoryTitle(category: FeatureCategory): string {
   if (category === 'general') return 'General';
   if (category === 'owner') return 'Owner';
-  return 'Group';
+  if (category === 'group') return 'Group';
+  if (category === 'downloader') return 'Downloader';
+  if (category === 'stalker') return 'Stalker';
+  return category;
 }
 
 export function canSeeCommand(
