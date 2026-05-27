@@ -51,6 +51,13 @@ import {
 import type { AppContext, MessageCtx } from '@bot/contracts';
 import { createPrismaClient, type AppPrismaClient } from '@bot/db';
 import { loadFeatures } from '@bot/features';
+import {
+  CircuitBreaker,
+  CovenantProvider,
+  HttpClient,
+  ProviderHub,
+  SiputzxProvider,
+} from '@bot/providers';
 import { createRootLogger, getConfigWarnings, loadConfig } from '@bot/utils';
 
 export interface BootstrapOptions {
@@ -95,6 +102,36 @@ export async function bootstrap(options: BootstrapOptions = {}): Promise<Bootstr
   const rateLimit = new RateLimitRegistryImpl(config);
   const scheduler = new SchedulerImpl({ db: prisma, bus, logger });
 
+  const providerHttp = new HttpClient({
+    timeoutMs: config.PROVIDER_HTTP_TIMEOUT_MS,
+    minTimeMs: config.PROVIDER_RATE_MIN_TIME_MS,
+    maxConcurrent: config.PROVIDER_MAX_CONCURRENT,
+  });
+  const siputzxProvider = new SiputzxProvider({
+    http: providerHttp,
+    logger: logger.child({ provider: 'siputzx' }),
+  });
+  const covenantProvider = config.COVENANT_API_KEY
+    ? new CovenantProvider({
+        http: providerHttp,
+        apiKey: config.COVENANT_API_KEY,
+        logger: logger.child({ provider: 'covenant' }),
+      })
+    : null;
+  const providerBreaker = new CircuitBreaker(
+    {
+      threshold: config.PROVIDER_CIRCUIT_THRESHOLD,
+      cooldownMs: config.PROVIDER_CIRCUIT_COOLDOWN_MS,
+    },
+    logger.child({ component: 'providers.circuit' }),
+  );
+  const providers = new ProviderHub({
+    providers: { siputzx: siputzxProvider, covenant: covenantProvider },
+    priority: { primary: config.PROVIDER_PRIMARY, fallback: config.PROVIDER_FALLBACK },
+    breaker: providerBreaker,
+    logger: logger.child({ component: 'providers' }),
+  });
+
   const app: AppContext<AppPrismaClient> = {
     config: config as AppContext['config'],
     logger,
@@ -104,6 +141,7 @@ export async function bootstrap(options: BootstrapOptions = {}): Promise<Bootstr
     rateLimit,
     registry,
     adapters,
+    providers,
   };
 
   bus.bindApp(app);
