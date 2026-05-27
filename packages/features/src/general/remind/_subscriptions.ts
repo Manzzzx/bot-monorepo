@@ -1,4 +1,5 @@
-import type { AppContext, Platform } from '@bot/contracts';
+import type { AppContext, ReminderFirePayload } from '@bot/contracts';
+import { parsePlatform } from '@bot/contracts';
 import { reminderRepo, type PrismaRepoClient } from '@bot/db';
 
 type ReminderApp = AppContext<PrismaRepoClient>;
@@ -9,23 +10,19 @@ type ReminderRow = {
   platform: string;
   text: string;
   status?: string;
+  attemptCount?: number;
 };
 
-type ReminderPayload = {
-  id?: unknown;
-  reminderId?: unknown;
-};
+const MAX_DELIVERY_ATTEMPTS = 3;
 
-function platformOf(value: string): Platform {
-  return value === 'tele' ? 'tele' : 'wa';
-}
+
 
 function idFromPayload(payload: unknown): string | null {
   if (typeof payload === 'string')
     return payload.startsWith('reminder:') ? payload.slice(9) : payload;
   if (typeof payload !== 'object' || payload === null) return null;
 
-  const candidate = payload as ReminderPayload;
+  const candidate = payload as { id?: unknown; reminderId?: unknown };
   if (typeof candidate.id === 'string') return candidate.id;
   if (typeof candidate.reminderId === 'string') return candidate.reminderId;
   return null;
@@ -61,7 +58,10 @@ async function resolveReminder(payload: unknown, app: ReminderApp): Promise<Remi
   return loadClaimed(id, app);
 }
 
-export async function fireReminder(payload: unknown, app: AppContext): Promise<void> {
+export async function fireReminder(
+  payload: ReminderFirePayload | unknown,
+  app: AppContext,
+): Promise<void> {
   const reminderApp = app as ReminderApp;
   const id = reminderIdOf(payload);
   if (!id) return;
@@ -74,11 +74,24 @@ export async function fireReminder(payload: unknown, app: AppContext): Promise<v
 
   try {
     await reminderApp.adapters
-      .get(platformOf(reminder.platform))
+      .get((parsePlatform(reminder.platform) ?? 'wa'))
       .sendMessage(reminder.chatId, `⏰ Reminder: ${reminder.text}`);
     await reminderRepo.markDone(reminderApp.db, reminder.id);
   } catch (error) {
-    await reminderRepo.markFailed(reminderApp.db, reminder.id, error);
-    reminderApp.logger.error({ err: error, reminderId: reminder.id }, 'Reminder delivery failed');
+    const nextAttempt = (reminder.attemptCount ?? 0) + 1;
+    if (nextAttempt >= MAX_DELIVERY_ATTEMPTS) {
+      await reminderRepo.markFailed(reminderApp.db, reminder.id, error);
+      reminderApp.logger.error(
+        { err: error, reminderId: reminder.id, attempt: nextAttempt, status: 'fatal' },
+        'Reminder delivery failed permanently',
+      );
+      return;
+    }
+
+    await reminderRepo.incrementAttempt(reminderApp.db, reminder.id, error);
+    reminderApp.logger.warn(
+      { err: error, reminderId: reminder.id, attempt: nextAttempt, status: 'recoverable' },
+      'Reminder delivery failed; will retry on next tick',
+    );
   }
 }

@@ -6,22 +6,26 @@ import remindFeature from './general/remind/index.js';
 vi.mock('@bot/db', () => ({
   userRepo: {
     upsertByExternal: vi.fn(async () => ({ id: 'user-db-1' })),
+    findByExternal: vi.fn(async () => ({ id: 'user-db-1' })),
   },
   reminderRepo: {
     claim: vi.fn(async () => null),
     markDone: vi.fn(async () => ({})),
     markFailed: vi.fn(async () => ({})),
+    incrementAttempt: vi.fn(async () => ({})),
   },
 }));
 
 const dbModule = await import('@bot/db');
 const userRepoMock = dbModule.userRepo as unknown as {
   upsertByExternal: ReturnType<typeof vi.fn>;
+  findByExternal: ReturnType<typeof vi.fn>;
 };
 const reminderRepoMock = dbModule.reminderRepo as unknown as {
   claim: ReturnType<typeof vi.fn>;
   markDone: ReturnType<typeof vi.fn>;
   markFailed: ReturnType<typeof vi.fn>;
+  incrementAttempt: ReturnType<typeof vi.fn>;
 };
 
 type ReminderState = {

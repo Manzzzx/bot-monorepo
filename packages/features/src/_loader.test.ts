@@ -99,8 +99,7 @@ describe('loadFeatures', () => {
       'ownerGuard',
     ]);
     expect(app.registry.resolve('mod')?.command.guards?.map((guard) => guard.name)).toEqual([
-      'groupGuard',
-      'ownerGuard',
+      'groupAdminGuard',
     ]);
   });
 

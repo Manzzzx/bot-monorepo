@@ -1,4 +1,5 @@
-import type { Feature, Platform, ReplyButton } from '@bot/contracts';
+import type { AppContext, Feature, GroupJoinPayload, ReplyButton } from '@bot/contracts';
+import { parsePlatform } from '@bot/contracts';
 import { reply } from '@bot/contracts';
 import {
   appFromCtx,
@@ -23,10 +24,7 @@ type JoinPayload = {
   users?: unknown;
 };
 
-function platformOf(value: unknown): Platform | null {
-  if (value === 'wa' || value === 'tele') return value;
-  return null;
-}
+
 
 function makeUser(id: string, name?: unknown): JoinUser {
   return typeof name === 'string' ? { id, name } : { id };
@@ -51,15 +49,16 @@ function renderWelcome(template: string, user: JoinUser, groupName: string): str
   return template.replaceAll('{user}', user.name ?? user.id).replaceAll('{group}', groupName);
 }
 
-async function sendWelcome(payload: unknown, app: GroupApp): Promise<void> {
-  if (typeof payload !== 'object' || payload === null) return;
+async function sendWelcome(payload: GroupJoinPayload, app: AppContext): Promise<void> {
+  const groupApp = app as GroupApp;
+  
 
   const event = payload as JoinPayload;
-  const platform = platformOf(event.platform);
+  const platform = parsePlatform(event.platform);
   const chatId = typeof event.chatId === 'string' ? event.chatId : event.groupId;
   if (!platform || typeof chatId !== 'string') return;
 
-  const db = app.db as GroupDb;
+  const db = groupApp.db as GroupDb;
   const group = await db.group.findUnique({
     where: { platform_externalId: { platform, externalId: chatId } },
     include: { config: true },
@@ -68,7 +67,7 @@ async function sendWelcome(payload: unknown, app: GroupApp): Promise<void> {
   if (!template) return;
 
   const groupName = typeof event.groupName === 'string' ? event.groupName : chatId;
-  const adapter = app.adapters.get(platform);
+  const adapter = groupApp.adapters.get(platform);
   for (const user of joinUsers(event)) {
     await adapter.sendMessage(chatId, renderWelcome(template, user, groupName));
   }

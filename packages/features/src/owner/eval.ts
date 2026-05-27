@@ -2,6 +2,7 @@ import { runInNewContext } from 'node:vm';
 import { inspect } from 'node:util';
 import type { Feature, ReplyButton } from '@bot/contracts';
 import { reply } from '@bot/contracts';
+import { appFromCtx } from './_shared.js';
 
 const outputLimit = 4_000;
 const timeoutMs = 1_000;
@@ -40,9 +41,19 @@ const evalFeature: Feature = {
     {
       name: 'eval',
       aliases: ['js'],
-      description: 'Evaluate JavaScript in a sandbox.',
+      description: 'Evaluate JavaScript in a sandbox (dev only).',
       usage: '/eval 1 + 1',
       async handler(ctx) {
+        const app = appFromCtx(ctx);
+        if (app.config.NODE_ENV === 'production') {
+          await reply(
+            ctx,
+            '🚫 /eval disabled in production. node:vm is not a sandbox; refusing to run untrusted code.',
+            { buttons: followUp, backTo: false },
+          );
+          return;
+        }
+
         const code = ctx.args.join(' ').trim();
         if (!code) {
           await reply(ctx, 'Usage: /eval <javascript>');
