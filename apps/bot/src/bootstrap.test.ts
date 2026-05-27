@@ -69,6 +69,7 @@ describe('bootstrap', () => {
     expect(typeof result.app.scheduler.start).toBe('function');
     expect(typeof result.app.providers.download).toBe('function');
     expect(typeof result.app.providers.stalk).toBe('function');
+    expect(typeof result.app.providers.fetchMedia).toBe('function');
 
     await result.scheduler.stop();
   });

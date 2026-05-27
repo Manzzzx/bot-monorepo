@@ -129,6 +129,8 @@ export async function bootstrap(options: BootstrapOptions = {}): Promise<Bootstr
     providers: { siputzx: siputzxProvider, covenant: covenantProvider },
     priority: { primary: config.PROVIDER_PRIMARY, fallback: config.PROVIDER_FALLBACK },
     breaker: providerBreaker,
+    http: providerHttp,
+    downloadMaxBytes: config.PROVIDER_DOWNLOAD_MAX_BYTES,
     logger: logger.child({ component: 'providers' }),
   });
 

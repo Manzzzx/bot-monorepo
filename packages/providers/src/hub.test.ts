@@ -32,6 +32,8 @@ describe('ProviderHub.download', () => {
       providers: { siputzx: primary, covenant: fallback },
       priority: { primary: 'siputzx', fallback: 'covenant' },
       breaker: new CircuitBreaker({ threshold: 3, cooldownMs: 1000 }),
+      http: { fetchBuffer: vi.fn() } as never,
+      downloadMaxBytes: 1024,
     });
     const result = await hub.download('tiktok', { url: 'https://x' });
     expect(result.source).toBe('primary');
@@ -48,6 +50,8 @@ describe('ProviderHub.download', () => {
       providers: { siputzx: primary, covenant: fallback },
       priority: { primary: 'siputzx', fallback: 'covenant' },
       breaker: new CircuitBreaker({ threshold: 3, cooldownMs: 1000 }),
+      http: { fetchBuffer: vi.fn() } as never,
+      downloadMaxBytes: 1024,
     });
     const result = await hub.download('tiktok', { url: 'https://x' });
     expect(result.source).toBe('fallback');
@@ -63,6 +67,8 @@ describe('ProviderHub.download', () => {
       providers: { siputzx: primary, covenant: fallback },
       priority: { primary: 'siputzx', fallback: 'covenant' },
       breaker: new CircuitBreaker({ threshold: 3, cooldownMs: 1000 }),
+      http: { fetchBuffer: vi.fn() } as never,
+      downloadMaxBytes: 1024,
     });
     await expect(hub.download('tiktok', { url: 'bad' })).rejects.toMatchObject({ kind: 'validation' });
     expect(fallback.download).not.toHaveBeenCalled();
@@ -79,6 +85,8 @@ describe('ProviderHub.download', () => {
       providers: { siputzx: primary, covenant: fallback },
       priority: { primary: 'siputzx', fallback: 'covenant' },
       breaker: new CircuitBreaker({ threshold: 3, cooldownMs: 1000 }),
+      http: { fetchBuffer: vi.fn() } as never,
+      downloadMaxBytes: 1024,
     });
     await expect(hub.download('tiktok', { url: 'https://x' })).rejects.toMatchObject({
       kind: 'unauthorized',
@@ -96,6 +104,8 @@ describe('ProviderHub.download', () => {
       providers: { siputzx: primary, covenant: fallback },
       priority: { primary: 'siputzx', fallback: 'covenant' },
       breaker: new CircuitBreaker({ threshold: 5, cooldownMs: 1000 }),
+      http: { fetchBuffer: vi.fn() } as never,
+      downloadMaxBytes: 1024,
     });
     const error = await hub.download('tiktok', { url: 'https://x' }).catch((e) => e);
     expect(error).toBeInstanceOf(ProviderUnavailableError);
@@ -112,6 +122,8 @@ describe('ProviderHub.download', () => {
       providers: { siputzx: primary, covenant: fallback },
       priority: { primary: 'siputzx', fallback: 'covenant' },
       breaker: new CircuitBreaker({ threshold: 3, cooldownMs: 1000 }),
+      http: { fetchBuffer: vi.fn() } as never,
+      downloadMaxBytes: 1024,
     });
     const result = await hub.download('tiktok', { url: 'https://x' });
     expect(result.source).toBe('fallback');
@@ -124,6 +136,8 @@ describe('ProviderHub.download', () => {
       providers: { siputzx: null, covenant: fallback },
       priority: { primary: 'siputzx', fallback: 'covenant' },
       breaker: new CircuitBreaker({ threshold: 3, cooldownMs: 1000 }),
+      http: { fetchBuffer: vi.fn() } as never,
+      downloadMaxBytes: 1024,
     });
     const result = await hub.download('tiktok', { url: 'https://x' });
     expect(result.source).toBe('fallback');
@@ -138,6 +152,8 @@ describe('ProviderHub.download', () => {
       providers: { siputzx: primary, covenant: fallback },
       priority: { primary: 'siputzx', fallback: 'covenant' },
       breaker,
+      http: { fetchBuffer: vi.fn() } as never,
+      downloadMaxBytes: 1024,
     });
     const result = await hub.download('tiktok', { url: 'https://x' });
     expect(result.source).toBe('fallback');
@@ -154,6 +170,8 @@ describe('ProviderHub.download', () => {
       providers: { siputzx: primary, covenant: fallback },
       priority: { primary: 'siputzx', fallback: 'covenant' },
       breaker,
+      http: { fetchBuffer: vi.fn() } as never,
+      downloadMaxBytes: 1024,
     });
     await hub.download('tiktok', { url: 'https://x' });
     await hub.download('tiktok', { url: 'https://x' });
@@ -170,6 +188,8 @@ describe('ProviderHub.download', () => {
       providers: { siputzx: primary, covenant: fallback },
       priority: { primary: 'siputzx', fallback: 'covenant' },
       breaker,
+      http: { fetchBuffer: vi.fn() } as never,
+      downloadMaxBytes: 1024,
     });
     await hub.download('tiktok', { url: 'bad' }).catch(() => undefined);
     await hub.download('tiktok', { url: 'bad' }).catch(() => undefined);

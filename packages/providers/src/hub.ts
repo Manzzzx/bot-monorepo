@@ -1,6 +1,7 @@
 import type { Logger } from 'pino';
 import type { CircuitBreaker } from './circuit.js';
 import { ProviderError, ProviderUnavailableError, shouldCountAsFailure } from './errors.js';
+import type { HttpClient } from './http.js';
 import type {
   ApiProvider,
   DownloaderResult,
@@ -18,6 +19,8 @@ export interface ProviderHubConfig {
   providers: Record<ProviderName, ApiProvider | null>;
   priority: { primary: ProviderName; fallback: ProviderName };
   breaker: CircuitBreaker;
+  http: HttpClient;
+  downloadMaxBytes: number;
   logger?: Logger;
 }
 
@@ -48,6 +51,10 @@ export class ProviderHub {
       query,
       (provider) => Boolean(provider.capabilities.stalker[service]),
     );
+  }
+
+  async fetchMedia(url: string): Promise<{ buffer: Buffer; mimeType: string }> {
+    return this.config.http.fetchBuffer(url, { maxBytes: this.config.downloadMaxBytes });
   }
 
   private async dispatch<T>(

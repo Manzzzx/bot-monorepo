@@ -103,9 +103,15 @@ export interface AppStalkerResult {
   source: ProviderSource;
 }
 
+export interface AppMediaBuffer {
+  buffer: Buffer;
+  mimeType: string;
+}
+
 export interface ProviderHubPort {
   download(service: string, query: { url: string }): Promise<AppDownloadResult>;
   stalk(service: string, query: { username: string }): Promise<AppStalkerResult>;
+  fetchMedia(url: string): Promise<AppMediaBuffer>;
 }
 
 export interface AppContext<TDb = unknown> {
