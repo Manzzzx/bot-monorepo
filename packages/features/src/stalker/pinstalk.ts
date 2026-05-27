@@ -3,7 +3,6 @@ import { createStalkerFeature, singleArgQuery } from './_shared.js';
 
 const feature: Feature = createStalkerFeature({
   name: 'pinstalk',
-  aliases: ['pinterest_stalk'],
   description: 'Stalk Pinterest user.',
   usage: '/pinstalk <username>',
   examples: ['/pinstalk dims'],

@@ -1,5 +1,4 @@
 import type {
-  AppContext,
   AppDownloadResult,
   Command,
   Feature,
@@ -234,8 +233,4 @@ export function createDownloaderFeature(spec: DownloaderFeatureSpec): Feature {
     version: '1.0.0',
     commands: [command],
   };
-}
-
-export function appContextProviders(app: AppContext): AppContext['providers'] {
-  return app.providers;
 }
