@@ -94,3 +94,13 @@ export function visibleCommands(
     .filter((entry) => canSeeCommand(entry, ctx, app))
     .sort((left, right) => left.command.name.localeCompare(right.command.name));
 }
+const MARKDOWN_ESCAPE = /([_*`[\]])/g;
+
+/**
+ * Escape Telegram legacy Markdown specials in untrusted content.
+ * Use BEFORE injecting any user-supplied or dynamic value into a
+ * markdown-rendered reply (parseMode: 'markdown').
+ */
+export function escapeMarkdown(text: string): string {
+  return text.replace(MARKDOWN_ESCAPE, '\\$1');
+}

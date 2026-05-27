@@ -6,6 +6,7 @@ import {
   categoryEmoji,
   categoryTitle,
   commandEmoji,
+  escapeMarkdown,
 } from './_registry.js';
 
 const CATEGORY_ORDER: FeatureCategory[] = [
@@ -76,13 +77,13 @@ function buildCategoryView(
   ];
   for (const entry of list) {
     const aliases = entry.command.aliases?.length
-      ? ` _( ${entry.command.aliases.join(', ')} )_`
+      ? ` _( ${escapeMarkdown(entry.command.aliases.join(', '))} )_`
       : '';
     lines.push(
       `${commandEmoji(entry.command.name)} \`/${entry.command.name}\`${aliases}`,
     );
     if (entry.command.description) {
-      lines.push(`   ${entry.command.description}`);
+      lines.push(`   ${escapeMarkdown(entry.command.description)}`);
     }
   }
   lines.push('');

@@ -1,5 +1,6 @@
 import type { Feature, ReplyButton } from '@bot/contracts';
 import { reply } from '@bot/contracts';
+import { escapeMarkdown } from './_registry.js';
 
 const DIVIDER = '━━━━━━━━━━━━━━━━━━━━━';
 
@@ -24,7 +25,8 @@ const startFeature: Feature = {
       description: 'Greet new users and link to help.',
       usage: '/start',
       async handler(ctx) {
-        const greeting = ctx.userName ? `Halo *${ctx.userName}*!` : 'Halo!';
+        const safeName = ctx.userName ? escapeMarkdown(ctx.userName) : '';
+        const greeting = safeName ? `Halo *${safeName}*!` : 'Halo!';
         const lines = [
           `👋 ${greeting}`,
           DIVIDER,

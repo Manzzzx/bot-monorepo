@@ -6,13 +6,11 @@ import {
   categoryEmoji,
   categoryTitle,
   commandEmoji,
+  escapeMarkdown,
 } from './_registry.js';
 
 const DIVIDER = '━━━━━━━━━━━━━━━━━━━━━';
 
-function escapeMarkdown(text: string): string {
-  return text.replace(/([_*`[\]])/g, '\\$1');
-}
 
 function isCategory(value: string): value is FeatureCategory {
   return ['general', 'owner', 'group', 'downloader', 'stalker'].includes(value);
@@ -21,17 +19,17 @@ function isCategory(value: string): value is FeatureCategory {
 function buildCommandDetail(entry: RegisteredCommand): string {
   const command = entry.command;
   const aliases = command.aliases?.length
-    ? command.aliases.map((alias) => `\`${alias}\``).join(', ')
+    ? command.aliases.map((alias) => `\`${escapeMarkdown(alias)}\``).join(', ')
     : '_tidak ada_';
   const examples = command.examples?.length
-    ? command.examples.map((example) => `• \`${example}\``).join('\n')
+    ? command.examples.map((example) => `• \`${escapeMarkdown(example)}\``).join('\n')
     : '';
   const lines = [
     `${commandEmoji(command.name)} *${escapeMarkdown(command.name)}*`,
     DIVIDER,
     `📖 ${escapeMarkdown(command.description)}`,
     '',
-    `📌 *Cara pakai:* \`${command.usage ?? `/${command.name}`}\``,
+    `📌 *Cara pakai:* \`${escapeMarkdown(command.usage ?? `/${command.name}`)}\``,
     `🏷️ *Kategori:* ${categoryEmoji(entry.category)} ${categoryTitle(entry.category)}`,
     `🔁 *Aliases:* ${aliases}`,
   ];
