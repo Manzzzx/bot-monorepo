@@ -10,7 +10,7 @@ function makeFullName(feature: Feature, commandName: string): string {
 }
 
 function emptyCategories(): Record<FeatureCategory, RegisteredCommand[]> {
-  return { general: [], owner: [], group: [] };
+  return { general: [], owner: [], group: [], downloader: [], stalker: [] };
 }
 
 export class CommandRegistryImpl implements CommandRegistry {

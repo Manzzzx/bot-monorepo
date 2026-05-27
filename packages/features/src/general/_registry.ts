@@ -16,7 +16,63 @@ export function isOwner(ctx: MessageCtx, app: Pick<AppContext, 'config'>): boole
 export function categoryTitle(category: FeatureCategory): string {
   if (category === 'general') return 'General';
   if (category === 'owner') return 'Owner';
-  return 'Group';
+  if (category === 'group') return 'Group';
+  if (category === 'downloader') return 'Downloader';
+  if (category === 'stalker') return 'Stalker';
+  return category;
+}
+
+export function categoryEmoji(category: FeatureCategory): string {
+  if (category === 'general') return '✨';
+  if (category === 'owner') return '👑';
+  if (category === 'group') return '👥';
+  if (category === 'downloader') return '⬇️';
+  if (category === 'stalker') return '🔍';
+  return '📋';
+}
+
+const commandEmojiMap: Record<string, string> = {
+  ping: '🏓',
+  help: '❓',
+  menu: '📋',
+  start: '🚀',
+  stats: '📊',
+  remind: '⏰',
+  reminders: '📅',
+  cancelreminder: '🗑️',
+  kick: '🚪',
+  mute: '🔇',
+  antilink: '🔗',
+  welcome: '👋',
+  eval: '⚙️',
+  broadcast: '📢',
+  shutdown: '🛑',
+  tiktok: '🎬',
+  igdl: '📷',
+  fbdl: '📘',
+  twitter: '🐦',
+  ytmp3: '🎵',
+  ytmp4: '📺',
+  spotify: '🎧',
+  pinterest: '📌',
+  sfile: '📁',
+  igstalk: '📷',
+  ttstalk: '🎬',
+  ghstalk: '💻',
+  twitterstalk: '🐦',
+  threadsstalk: '🧵',
+  pinstalk: '📌',
+  ytstalk: '📺',
+  robloxstalk: '🟥',
+  fbstalk: '📘',
+  ffstalk: '🔥',
+  mlstalk: '⚔️',
+  pixivstalk: '🎨',
+  wastalk: '💬',
+};
+
+export function commandEmoji(name: string): string {
+  return commandEmojiMap[name] ?? '•';
 }
 
 export function canSeeCommand(
@@ -37,4 +93,14 @@ export function visibleCommands(
     .list()
     .filter((entry) => canSeeCommand(entry, ctx, app))
     .sort((left, right) => left.command.name.localeCompare(right.command.name));
+}
+const MARKDOWN_ESCAPE = /([_*`[\]])/g;
+
+/**
+ * Escape Telegram legacy Markdown specials in untrusted content.
+ * Use BEFORE injecting any user-supplied or dynamic value into a
+ * markdown-rendered reply (parseMode: 'markdown').
+ */
+export function escapeMarkdown(text: string): string {
+  return text.replace(MARKDOWN_ESCAPE, '\\$1');
 }

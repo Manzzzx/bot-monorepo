@@ -7,6 +7,9 @@ import type { Platform } from './platform.js';
 export type NodeEnv = 'development' | 'production' | 'test';
 export type LogLevel = 'trace' | 'debug' | 'info' | 'warn' | 'error';
 
+export type ProviderName = 'siputzx' | 'covenant';
+export type ProviderSource = 'primary' | 'fallback';
+
 export interface AppConfig {
   NODE_ENV: NodeEnv;
   TZ: string;
@@ -23,6 +26,15 @@ export interface AppConfig {
   TELEGRAM_BOT_TOKEN?: string | undefined;
   OWNER_TG?: string | undefined;
   TELE_RATE_MIN_TIME_MS: number;
+  COVENANT_API_KEY?: string | undefined;
+  PROVIDER_PRIMARY: ProviderName;
+  PROVIDER_FALLBACK: ProviderName;
+  PROVIDER_HTTP_TIMEOUT_MS: number;
+  PROVIDER_RATE_MIN_TIME_MS: number;
+  PROVIDER_MAX_CONCURRENT: number;
+  PROVIDER_CIRCUIT_THRESHOLD: number;
+  PROVIDER_CIRCUIT_COOLDOWN_MS: number;
+  PROVIDER_DOWNLOAD_MAX_BYTES: number;
 }
 
 export interface MessageAdapter {
@@ -64,6 +76,44 @@ export interface RateLimitRegistry {
   outbound(platform: Platform, chatId: string): Bottleneck;
 }
 
+export interface AppDownloadResult {
+  type: 'video' | 'audio' | 'image' | 'document';
+  url: string;
+  title?: string | undefined;
+  author?: string | undefined;
+  caption?: string | undefined;
+  durationSec?: number | undefined;
+  thumbnailUrl?: string | undefined;
+  sizeBytes?: number | undefined;
+  source: ProviderSource;
+}
+
+export interface AppStalkerResult {
+  username: string;
+  displayName?: string | undefined;
+  bio?: string | undefined;
+  avatarUrl?: string | undefined;
+  verified?: boolean | undefined;
+  private?: boolean | undefined;
+  followers?: number | undefined;
+  following?: number | undefined;
+  posts?: number | undefined;
+  url?: string | undefined;
+  extra?: Record<string, unknown> | undefined;
+  source: ProviderSource;
+}
+
+export interface AppMediaBuffer {
+  buffer: Buffer;
+  mimeType: string;
+}
+
+export interface ProviderHubPort {
+  download(service: string, query: { url: string }): Promise<AppDownloadResult>;
+  stalk(service: string, query: { username: string; extra?: Record<string, string> }): Promise<AppStalkerResult>;
+  fetchMedia(url: string): Promise<AppMediaBuffer>;
+}
+
 export interface AppContext<TDb = unknown> {
   config: AppConfig;
   logger: Logger;
@@ -73,4 +123,5 @@ export interface AppContext<TDb = unknown> {
   rateLimit: RateLimitRegistry;
   registry: CommandRegistry;
   adapters: AdapterRegistry;
+  providers: ProviderHubPort;
 }

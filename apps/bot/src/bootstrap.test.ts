@@ -44,6 +44,14 @@ describe('bootstrap', () => {
       WA_RATE_MIN_TIME_MS: 0,
       TELE_ENABLED: false,
       TELE_RATE_MIN_TIME_MS: 0,
+      PROVIDER_PRIMARY: 'siputzx',
+      PROVIDER_FALLBACK: 'covenant',
+      PROVIDER_HTTP_TIMEOUT_MS: 15000,
+      PROVIDER_RATE_MIN_TIME_MS: 250,
+      PROVIDER_MAX_CONCURRENT: 4,
+      PROVIDER_CIRCUIT_THRESHOLD: 5,
+      PROVIDER_CIRCUIT_COOLDOWN_MS: 60000,
+      PROVIDER_DOWNLOAD_MAX_BYTES: 104857600,
     } as BootstrapConfig;
 
     const result = await bootstrap({
@@ -59,6 +67,9 @@ describe('bootstrap', () => {
     expect(result.app.adapters.has('wa')).toBe(false);
     expect(result.app.adapters.has('tele')).toBe(false);
     expect(typeof result.app.scheduler.start).toBe('function');
+    expect(typeof result.app.providers.download).toBe('function');
+    expect(typeof result.app.providers.stalk).toBe('function');
+    expect(typeof result.app.providers.fetchMedia).toBe('function');
 
     await result.scheduler.stop();
   });

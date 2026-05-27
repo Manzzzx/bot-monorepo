@@ -1,10 +1,11 @@
-import type { MediaRef, MessageCtx, ReplyButton, ReplyMedia, ReplyOpts } from './message-ctx.js';
+import type { MediaRef, MessageCtx, ParseMode, ReplyButton, ReplyMedia, ReplyOpts } from './message-ctx.js';
 
 export interface ReplyHelperOptions {
   buttons?: ReplyButton[][] | undefined;
   quote?: boolean | undefined;
   mentions?: string[] | undefined;
   media?: MediaRef | ReplyMedia | undefined;
+  parseMode?: ParseMode | undefined;
   /**
    * Append a "⬅ Kembali" row pointing to this command. Default `'menu'`.
    * Pass `false` to skip (use for root screens like start/menu/stats).
@@ -40,6 +41,7 @@ export async function reply(
   if (options?.quote !== undefined) opts.quote = options.quote;
   if (options?.mentions !== undefined) opts.mentions = options.mentions;
   if (options?.media !== undefined) opts.media = options.media;
+  if (options?.parseMode !== undefined) opts.parseMode = options.parseMode;
 
   if (Object.keys(opts).length === 0) {
     await ctx.reply(text);

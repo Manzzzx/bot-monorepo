@@ -1,7 +1,7 @@
 import type { AppContext } from './app-context.js';
 import type { MessageCtx } from './message-ctx.js';
 
-export type FeatureCategory = 'general' | 'owner' | 'group';
+export type FeatureCategory = 'general' | 'owner' | 'group' | 'downloader' | 'stalker';
 
 export type EventName =
   | 'message'
@@ -19,6 +19,7 @@ export interface Command {
   aliases?: string[];
   description: string;
   usage?: string;
+  examples?: string[];
   category?: FeatureCategory;
   guards?: Middleware[];
   handler(ctx: MessageCtx): Promise<void>;

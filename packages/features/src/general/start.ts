@@ -1,10 +1,17 @@
 import type { Feature, ReplyButton } from '@bot/contracts';
 import { reply } from '@bot/contracts';
+import { escapeMarkdown } from './_registry.js';
+
+const DIVIDER = '━━━━━━━━━━━━━━━━━━━━━';
 
 const startButtons: ReplyButton[][] = [
   [
     { label: '📋 Menu', command: 'menu' },
     { label: '❓ Help', command: 'help' },
+  ],
+  [
+    { label: '⬇️ Downloader', command: 'menu downloader' },
+    { label: '🔍 Stalker', command: 'menu stalker' },
   ],
   [{ label: '🏓 Ping', command: 'ping' }],
 ];
@@ -18,13 +25,29 @@ const startFeature: Feature = {
       description: 'Greet new users and link to help.',
       usage: '/start',
       async handler(ctx) {
+        const safeName = ctx.userName ? escapeMarkdown(ctx.userName) : '';
+        const greeting = safeName ? `Halo *${safeName}*!` : 'Halo!';
         const lines = [
-          '👋 Halo! Bot ini siap dipakai.',
+          `👋 ${greeting}`,
+          DIVIDER,
+          'Saya bot multi-platform dengan fitur:',
           '',
-          'Coba: `/help` atau `/menu` untuk lihat command.',
-          'Quick test: `/ping`',
+          '✨ *General* — utility & reminder',
+          '⬇️ *Downloader* — TikTok / IG / FB / YT / Spotify',
+          '🔍 *Stalker* — IG / TikTok / GitHub / dan banyak lagi',
+          '👥 *Group* — moderasi grup',
+          '',
+          DIVIDER,
+          'Mulai cepat:',
+          '• Tap tombol di bawah, atau',
+          '• Ketik `/menu` untuk papan menu utama',
+          '• Ketik `/help <command>` untuk detail',
         ];
-        await reply(ctx, lines.join('\n'), { buttons: startButtons, backTo: false });
+        await reply(ctx, lines.join('\n'), {
+          parseMode: 'markdown',
+          buttons: startButtons,
+          backTo: false,
+        });
       },
     },
   ],

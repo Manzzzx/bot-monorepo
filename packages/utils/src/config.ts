@@ -52,6 +52,15 @@ export const ConfigSchema = z
     TELEGRAM_BOT_TOKEN: optionalNonEmptyString,
     OWNER_TG: optionalNonEmptyString,
     TELE_RATE_MIN_TIME_MS: z.coerce.number().int().nonnegative().default(50),
+    COVENANT_API_KEY: optionalNonEmptyString,
+    PROVIDER_PRIMARY: z.enum(['siputzx', 'covenant']).default('siputzx'),
+    PROVIDER_FALLBACK: z.enum(['siputzx', 'covenant']).default('covenant'),
+    PROVIDER_HTTP_TIMEOUT_MS: z.coerce.number().int().positive().default(15000),
+    PROVIDER_RATE_MIN_TIME_MS: z.coerce.number().int().nonnegative().default(250),
+    PROVIDER_MAX_CONCURRENT: z.coerce.number().int().positive().default(4),
+    PROVIDER_CIRCUIT_THRESHOLD: z.coerce.number().int().positive().default(5),
+    PROVIDER_CIRCUIT_COOLDOWN_MS: z.coerce.number().int().positive().default(60000),
+    PROVIDER_DOWNLOAD_MAX_BYTES: z.coerce.number().int().positive().default(104857600),
   })
   .superRefine((config, ctx) => {
     if (config.TELE_ENABLED && !config.TELEGRAM_BOT_TOKEN) {
@@ -59,6 +68,13 @@ export const ConfigSchema = z
         code: 'custom',
         path: ['TELEGRAM_BOT_TOKEN'],
         message: 'TELEGRAM_BOT_TOKEN is required when TELE_ENABLED=true',
+      });
+    }
+    if (config.PROVIDER_PRIMARY === config.PROVIDER_FALLBACK) {
+      ctx.addIssue({
+        code: 'custom',
+        path: ['PROVIDER_FALLBACK'],
+        message: 'PROVIDER_PRIMARY and PROVIDER_FALLBACK must differ',
       });
     }
   });
@@ -80,7 +96,7 @@ export function loadConfig(env: ConfigEnv = process.env): AppConfig {
 }
 
 export function getConfigWarnings(
-  config: Pick<AppConfig, 'WA_ENABLED' | 'OWNER_WA' | 'TELE_ENABLED' | 'OWNER_TG'>,
+  config: Pick<AppConfig, 'WA_ENABLED' | 'OWNER_WA' | 'TELE_ENABLED' | 'OWNER_TG' | 'COVENANT_API_KEY'>,
 ): string[] {
   const warnings: string[] = [];
 
@@ -91,6 +107,12 @@ export function getConfigWarnings(
   if (config.TELE_ENABLED && !config.OWNER_TG) {
     warnings.push(
       'TELE_ENABLED=true but OWNER_TG is missing; Telegram owner commands will be disabled.',
+    );
+  }
+
+  if (!config.COVENANT_API_KEY) {
+    warnings.push(
+      'COVENANT_API_KEY missing; covenant provider disabled, downloader/stalker fallback unavailable.',
     );
   }
 
