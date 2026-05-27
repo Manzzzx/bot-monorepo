@@ -165,6 +165,6 @@ describe('createRouter', () => {
       expect.objectContaining({ status: 'error', traceId: 'trace-boom' }),
       'Unhandled bot error',
     );
-    expect(ctx.reply).toHaveBeenCalledWith(expect.stringContaining('trace-boom'));
+    expect(ctx.reply).toHaveBeenCalledWith('Internal error. Please try again later.');
   });
 });

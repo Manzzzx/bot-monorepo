@@ -1,10 +1,16 @@
-import type { AppContext, EventBus, EventName } from '@bot/contracts';
+import type {
+  AppContext,
+  EventBus,
+  EventHandler,
+  EventName,
+  EventPayloads,
+} from '@bot/contracts';
 import { BotError } from './errors.js';
 
-type EventHandler = (payload: unknown, app: AppContext) => Promise<void> | void;
+type AnyHandler = EventHandler<EventName>;
 
 export class InMemoryEventBus implements EventBus {
-  private readonly handlers = new Map<EventName, Set<EventHandler>>();
+  private readonly handlers = new Map<EventName, Set<AnyHandler>>();
 
   constructor(private app?: AppContext) {}
 
@@ -12,17 +18,17 @@ export class InMemoryEventBus implements EventBus {
     this.app = app;
   }
 
-  on(event: EventName, handler: EventHandler): void {
-    const handlers = this.handlers.get(event) ?? new Set<EventHandler>();
-    handlers.add(handler);
+  on<E extends EventName>(event: E, handler: EventHandler<E>): void {
+    const handlers = this.handlers.get(event) ?? new Set<AnyHandler>();
+    handlers.add(handler as AnyHandler);
     this.handlers.set(event, handlers);
   }
 
-  async emit(event: EventName, payload: unknown): Promise<void> {
+  async emit<E extends EventName>(event: E, payload: EventPayloads[E]): Promise<void> {
     const app = this.app;
     if (!app) throw new BotError('EventBus app context is not bound.', 'EVENT_BUS_UNBOUND');
 
     const handlers = [...(this.handlers.get(event) ?? [])];
-    await Promise.all(handlers.map((handler) => handler(payload, app)));
+    await Promise.all(handlers.map((handler) => handler(payload as never, app)));
   }
 }

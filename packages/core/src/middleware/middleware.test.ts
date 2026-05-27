@@ -137,6 +137,6 @@ describe('core middleware', () => {
       expect.objectContaining({ status: 'error', traceId: 'trace-xyz' }),
       'Unhandled bot error',
     );
-    expect(ctx.reply).toHaveBeenCalledWith(expect.stringContaining('trace-xyz'));
+    expect(ctx.reply).toHaveBeenCalledWith('Internal error. Please try again later.');
   });
 });
