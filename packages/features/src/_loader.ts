@@ -39,6 +39,8 @@ const featureCategories = [
   'general',
   'owner',
   'group',
+  'downloader',
+  'stalker',
 ] as const satisfies readonly FeatureCategory[];
 const categories = new Set<string>(featureCategories);
 
@@ -62,6 +64,8 @@ export const staticFeatureRegistry = {
     { baseName: 'mute', feature: muteFeature },
     { baseName: 'welcome', feature: welcomeFeature },
   ],
+  downloader: [],
+  stalker: [],
 } as const satisfies StaticFeatureRegistry;
 
 function isCategory(value: string): value is FeatureCategory {

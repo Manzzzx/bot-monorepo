@@ -43,6 +43,7 @@ describe('loadConfig', () => {
     expect(getConfigWarnings(config)).toEqual([
       'WA_ENABLED=true but OWNER_WA is missing; WA owner commands will be disabled.',
       'TELE_ENABLED=true but OWNER_TG is missing; Telegram owner commands will be disabled.',
+      'COVENANT_API_KEY missing; covenant provider disabled, downloader/stalker fallback unavailable.',
     ]);
   });
 
