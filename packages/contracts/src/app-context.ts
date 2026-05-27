@@ -1,6 +1,13 @@
 import type Bottleneck from 'bottleneck';
 import type { Logger } from 'pino';
-import type { Command, EventName, Feature, FeatureCategory } from './feature.js';
+import type {
+  Command,
+  EventHandler,
+  EventName,
+  EventPayloads,
+  Feature,
+  FeatureCategory,
+} from './feature.js';
 import type { ReplyOpts } from './message-ctx.js';
 import type { Platform } from './platform.js';
 
@@ -40,9 +47,11 @@ export interface AppConfig {
 export interface MessageAdapter {
   platform: Platform;
   sendMessage(chatId: string, text: string, opts?: ReplyOpts): Promise<void>;
+  isGroupAdmin?(chatId: string, userId: string): Promise<boolean>;
 }
 
 export interface AdapterRegistry {
+  register(adapter: MessageAdapter): void;
   get(platform: Platform): MessageAdapter;
   has(platform: Platform): boolean;
 }
@@ -62,8 +71,8 @@ export interface CommandRegistry {
 }
 
 export interface EventBus {
-  emit(event: EventName, payload: unknown): Promise<void> | void;
-  on(event: EventName, handler: (payload: unknown, app: AppContext) => Promise<void> | void): void;
+  emit<E extends EventName>(event: E, payload: EventPayloads[E]): Promise<void> | void;
+  on<E extends EventName>(event: E, handler: EventHandler<E>): void;
 }
 
 export interface Scheduler {
@@ -110,7 +119,10 @@ export interface AppMediaBuffer {
 
 export interface ProviderHubPort {
   download(service: string, query: { url: string }): Promise<AppDownloadResult>;
-  stalk(service: string, query: { username: string; extra?: Record<string, string> }): Promise<AppStalkerResult>;
+  stalk(
+    service: string,
+    query: { username: string; extra?: Record<string, string> },
+  ): Promise<AppStalkerResult>;
   fetchMedia(url: string): Promise<AppMediaBuffer>;
 }
 
@@ -124,4 +136,6 @@ export interface AppContext<TDb = unknown> {
   registry: CommandRegistry;
   adapters: AdapterRegistry;
   providers: ProviderHubPort;
+  /** Optional shutdown hook bound by the host app (used by /shutdown command). */
+  shutdown?: (reason?: string) => Promise<void> | void;
 }
