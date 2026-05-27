@@ -1,6 +1,6 @@
 import { vi } from 'vitest';
 import type { Logger } from 'pino';
-import type { MessageCtx } from './message-ctx.js';
+import type { MessageCtx } from '../message-ctx.js';
 
 export function createMockCtx(overrides: Partial<MessageCtx> = {}): MessageCtx {
   const ctx: MessageCtx = {

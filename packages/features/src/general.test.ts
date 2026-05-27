@@ -6,7 +6,7 @@ import type {
   MessageCtx,
   RegisteredCommand,
 } from '@bot/contracts';
-import { createMockCtx } from '@bot/contracts';
+import { createMockCtx } from '@bot/contracts/testing';
 import { describe, expect, it, vi } from 'vitest';
 import helpFeature from './general/help.js';
 import menuFeature from './general/menu.js';

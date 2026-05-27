@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { createMockCtx } from './testing.js';
+import { createMockCtx } from './create-mock-ctx.js';
 
 describe('createMockCtx', () => {
   it('allows overrides and spy assertions', async () => {

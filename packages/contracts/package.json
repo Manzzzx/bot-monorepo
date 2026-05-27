@@ -10,6 +10,11 @@
       "types": "./dist/index.d.ts",
       "import": "./dist/index.js",
       "default": "./dist/index.js"
+    },
+    "./testing": {
+      "types": "./dist/testing/index.d.ts",
+      "import": "./dist/testing/index.js",
+      "default": "./dist/testing/index.js"
     }
   },
   "scripts": {
@@ -21,5 +26,8 @@
   "dependencies": {
     "bottleneck": "^2.19.5",
     "pino": "^10.3.1"
+  },
+  "devDependencies": {
+    "vitest": "^4.1.7"
   }
 }

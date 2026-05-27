@@ -1,5 +1,5 @@
 import type { AppContext, MessageCtx } from '@bot/contracts';
-import { createMockCtx } from '@bot/contracts';
+import { createMockCtx } from '@bot/contracts/testing';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import remindFeature from './general/remind/index.js';
 

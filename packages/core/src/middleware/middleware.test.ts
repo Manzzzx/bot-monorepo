@@ -1,4 +1,5 @@
-import { createMockCtx, type AppContext, type MessageCtx } from '@bot/contracts';
+import { type AppContext, type MessageCtx } from '@bot/contracts';
+import { createMockCtx } from '@bot/contracts/testing';
 import type { Logger } from 'pino';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { GuardRejection } from '../errors.js';

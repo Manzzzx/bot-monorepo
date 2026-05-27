@@ -1,5 +1,5 @@
 import type { AppContext, MessageCtx } from '@bot/contracts';
-import { createMockCtx } from '@bot/contracts';
+import { createMockCtx } from '@bot/contracts/testing';
 import { describe, expect, it, vi } from 'vitest';
 import antiLinkFeature from './group/antilink.js';
 import kickFeature from './group/kick.js';
