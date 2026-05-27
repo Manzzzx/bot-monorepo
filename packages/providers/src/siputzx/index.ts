@@ -12,8 +12,9 @@ import type {
   StalkerService,
   StalkQuery,
 } from '../types.js';
-import { SIPUTZX_BASE, SIPUTZX_DOWNLOADER } from './endpoints.js';
+import { SIPUTZX_BASE, SIPUTZX_DOWNLOADER, SIPUTZX_STALKER } from './endpoints.js';
 import { normalizeDownloader } from './normalizers/downloader.js';
+import { normalizeStalker } from './normalizers/stalker.js';
 
 export interface SiputzxOptions {
   http: HttpClient;
@@ -30,11 +31,22 @@ const DOWNLOADER_CAPS: ProviderCapabilities['downloader'] = {
   spotify: true,
 };
 
+const STALKER_CAPS: ProviderCapabilities['stalker'] = {
+  instagram: true,
+  tiktok: true,
+  github: true,
+  twitter: true,
+  threads: true,
+  pinterest: true,
+  youtube: true,
+  roblox: true,
+};
+
 export class SiputzxProvider implements ApiProvider {
   readonly name: ProviderName = 'siputzx';
   readonly capabilities: ProviderCapabilities = {
     downloader: DOWNLOADER_CAPS,
-    stalker: {},
+    stalker: STALKER_CAPS,
   };
 
   constructor(private readonly options: SiputzxOptions) {}
@@ -52,10 +64,17 @@ export class SiputzxProvider implements ApiProvider {
     return normalizeDownloader(service, payload);
   }
 
-  async stalk(service: StalkerService, _query: StalkQuery): Promise<StalkerResult> {
-    void _query;
-    throw new ProviderError(this.name, `stalk/${service}`, 'unsupported', {
-      detail: 'not_implemented',
-    });
+  async stalk(service: StalkerService, query: StalkQuery): Promise<StalkerResult> {
+    const path = SIPUTZX_STALKER[service as keyof typeof SIPUTZX_STALKER];
+    if (!path) {
+      throw new ProviderError(this.name, `stalk/${service}`, 'unsupported');
+    }
+    const url = `${SIPUTZX_BASE}${path}`;
+    const queryParams: Record<string, string> = { username: query.username };
+    if (query.extra) {
+      for (const [key, value] of Object.entries(query.extra)) queryParams[key] = value;
+    }
+    const payload = await this.options.http.get(this.name, url, { query: queryParams });
+    return normalizeStalker(service, payload);
   }
 }

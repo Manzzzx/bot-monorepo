@@ -10,4 +10,13 @@ export const SIPUTZX_DOWNLOADER = {
   spotify: '/api/d/spotifyv2',
 } as const;
 
-export const SIPUTZX_STALKER = {} as const;
+export const SIPUTZX_STALKER = {
+  instagram: '/api/stalk/instagram',
+  tiktok: '/api/stalk/tiktok',
+  github: '/api/stalk/github',
+  twitter: '/api/stalk/twitter',
+  threads: '/api/stalk/threads',
+  pinterest: '/api/stalk/pinterest',
+  youtube: '/api/stalk/youtube',
+  roblox: '/api/stalk/roblox',
+} as const;

@@ -12,8 +12,14 @@ import type {
   StalkerService,
   StalkQuery,
 } from '../types.js';
-import { COVENANT_BASE, COVENANT_DOWNLOADER } from './endpoints.js';
+import {
+  COVENANT_BASE,
+  COVENANT_DOWNLOADER,
+  COVENANT_STALKER,
+  COVENANT_STALKER_PARAM,
+} from './endpoints.js';
 import { normalizeDownloader } from './normalizers/downloader.js';
+import { normalizeStalker } from './normalizers/stalker.js';
 
 export interface CovenantOptions {
   http: HttpClient;
@@ -33,11 +39,24 @@ const DOWNLOADER_CAPS: ProviderCapabilities['downloader'] = {
   sfile: true,
 };
 
+const STALKER_CAPS: ProviderCapabilities['stalker'] = {
+  instagram: true,
+  tiktok: true,
+  twitter: true,
+  threads: true,
+  pinterest: true,
+  facebook: true,
+  freefire: true,
+  mlbb: true,
+  pixiv: true,
+  whatsapp: true,
+};
+
 export class CovenantProvider implements ApiProvider {
   readonly name: ProviderName = 'covenant';
   readonly capabilities: ProviderCapabilities = {
     downloader: DOWNLOADER_CAPS,
-    stalker: {},
+    stalker: STALKER_CAPS,
   };
 
   constructor(private readonly options: CovenantOptions) {}
@@ -63,10 +82,21 @@ export class CovenantProvider implements ApiProvider {
     return normalizeDownloader(service, payload);
   }
 
-  async stalk(service: StalkerService, _query: StalkQuery): Promise<StalkerResult> {
-    void _query;
-    throw new ProviderError(this.name, `stalk/${service}`, 'unsupported', {
-      detail: 'not_implemented',
+  async stalk(service: StalkerService, query: StalkQuery): Promise<StalkerResult> {
+    const path = COVENANT_STALKER[service as keyof typeof COVENANT_STALKER];
+    if (!path) {
+      throw new ProviderError(this.name, `stalk/${service}`, 'unsupported');
+    }
+    const url = `${COVENANT_BASE}${path}`;
+    const paramKey = COVENANT_STALKER_PARAM[service] ?? 'username';
+    const queryParams: Record<string, string> = { [paramKey]: query.username };
+    if (query.extra) {
+      for (const [key, value] of Object.entries(query.extra)) queryParams[key] = value;
+    }
+    const payload = await this.options.http.get(this.name, url, {
+      query: queryParams,
+      headers: this.authHeaders(),
     });
+    return normalizeStalker(service, payload);
   }
 }
