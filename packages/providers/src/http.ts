@@ -7,12 +7,19 @@ export interface HttpClientConfig {
   timeoutMs: number;
   minTimeMs: number;
   maxConcurrent: number;
+  /**
+   * Hard cap for JSON response bodies (`get`). Defaults to 4 MiB. Prevents a
+   * compromised provider from exhausting memory via unbounded payloads.
+   */
+  responseMaxBytes?: number;
 }
 
 export interface HttpGetOpts {
   query?: Record<string, string>;
   headers?: Record<string, string>;
   timeoutMs?: number;
+  /** Override the default response body size cap for this call. */
+  maxBytes?: number;
 }
 
 export interface HttpFetchBufferOpts {
@@ -20,6 +27,8 @@ export interface HttpFetchBufferOpts {
   timeoutMs?: number;
   headers?: Record<string, string>;
 }
+
+const DEFAULT_RESPONSE_MAX_BYTES = 4 * 1024 * 1024;
 
 function statusToKind(status: number): ProviderErrorKind {
   if (status === 400) return 'validation';
@@ -35,10 +44,36 @@ function buildUrl(url: string, query?: Record<string, string>): string {
   return parsed.toString();
 }
 
+async function readBoundedJson<T>(
+  provider: string,
+  url: string,
+  body: AsyncIterable<Buffer>,
+  maxBytes: number,
+): Promise<T> {
+  const chunks: Buffer[] = [];
+  let total = 0;
+  for await (const chunk of body) {
+    total += chunk.length;
+    if (total > maxBytes) {
+      throw new ProviderError(provider, url, 'validation', { detail: 'response_too_large' });
+    }
+    chunks.push(chunk);
+  }
+  const raw = Buffer.concat(chunks).toString('utf8');
+  try {
+    return JSON.parse(raw) as T;
+  } catch (cause) {
+    throw new ProviderError(provider, url, 'parse', { cause });
+  }
+}
+
 export class HttpClient {
   private readonly limiters = new Map<string, Bottleneck>();
+  private readonly responseMaxBytes: number;
 
-  constructor(private readonly config: HttpClientConfig) {}
+  constructor(private readonly config: HttpClientConfig) {
+    this.responseMaxBytes = config.responseMaxBytes ?? DEFAULT_RESPONSE_MAX_BYTES;
+  }
 
   async get<T = unknown>(provider: ProviderName, url: string, opts: HttpGetOpts = {}): Promise<T> {
     const limiter = this.limiter(provider);
@@ -60,11 +95,13 @@ export class HttpClient {
             status: response.statusCode,
           });
         }
-        try {
-          return (await response.body.json()) as T;
-        } catch (cause) {
-          throw new ProviderError(provider, url, 'parse', { cause });
-        }
+        const cap = opts.maxBytes ?? this.responseMaxBytes;
+        return await readBoundedJson<T>(
+          provider,
+          url,
+          response.body as AsyncIterable<Buffer>,
+          cap,
+        );
       } catch (error) {
         if (error instanceof ProviderError) throw error;
         if ((error as { name?: string }).name === 'AbortError') {
