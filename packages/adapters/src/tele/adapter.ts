@@ -7,6 +7,7 @@ import {
   createTeleMessageCtx,
   hasUserMessage,
 } from './context.js';
+import { GroupAdminCache } from '../group-admin-cache.js';
 
 const PLATFORM: Platform = 'tele';
 
@@ -32,6 +33,7 @@ export function createTeleAdapter(options: TeleAdapterOptions): TeleAdapter {
   const bot = new Bot<GrammyContext>(token);
   let started = false;
   let paused = false;
+  const adminCache = new GroupAdminCache();
 
   bot.on('message', async (ctx) => {
     if (paused) return;
@@ -145,9 +147,13 @@ export function createTeleAdapter(options: TeleAdapterOptions): TeleAdapter {
       paused = false;
     },
     async isGroupAdmin(chatId: string, userId: string): Promise<boolean> {
+      const cached = adminCache.get(chatId, userId);
+      if (cached !== undefined) return cached;
       try {
         const member = await bot.api.getChatMember(chatId, Number(userId));
-        return member.status === 'administrator' || member.status === 'creator';
+        const isAdmin = member.status === 'administrator' || member.status === 'creator';
+        adminCache.set(chatId, userId, isAdmin);
+        return isAdmin;
       } catch (error) {
         logger.warn({ err: error, status: 'rejected', chatId }, 'Telegram isGroupAdmin lookup failed');
         return false;
