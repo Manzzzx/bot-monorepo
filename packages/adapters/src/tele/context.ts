@@ -1,5 +1,6 @@
 import { InlineKeyboard, type Context as GrammyContext } from 'grammy';
 import { ulid } from 'ulid';
+import { sendWithMarkdownFallback } from './markdown-fallback.js';
 import type {
   AppContext,
   MediaKind,
@@ -205,7 +206,13 @@ export function createTeleMessageCtx(
         if (parseMode) sendOpts.parse_mode = parseMode;
         if (opts?.quote) sendOpts.reply_parameters = { message_id: Number(messageId) };
         if (keyboard) sendOpts.reply_markup = keyboard;
-        await update.api.sendMessage(chatId, replyText, sendOpts);
+        await sendWithMarkdownFallback(
+          (opts) => update.api.sendMessage(chatId, replyText, opts),
+          sendOpts,
+          parseMode,
+          childLogger,
+          { chatId, op: 'reply.sendMessage' },
+        );
       });
     },
     async edit(newText: string): Promise<void> {
@@ -346,11 +353,12 @@ export function createTeleCallbackCtx(
             const editOpts: Record<string, unknown> = {};
             if (parseMode) editOpts.parse_mode = parseMode;
             if (keyboard) editOpts.reply_markup = keyboard;
-            await update.api.editMessageText(
-              chatId,
-              Number(triggerMessageId),
-              replyText,
+            await sendWithMarkdownFallback(
+              (opts) => update.api.editMessageText(chatId, Number(triggerMessageId), replyText, opts),
               editOpts,
+              parseMode,
+              childLogger,
+              { chatId, op: 'callback.editMessageText' },
             );
             return;
           } catch (error) {
@@ -364,7 +372,13 @@ export function createTeleCallbackCtx(
         const sendOpts: Record<string, unknown> = {};
         if (parseMode) sendOpts.parse_mode = parseMode;
         if (keyboard) sendOpts.reply_markup = keyboard;
-        await update.api.sendMessage(chatId, replyText, sendOpts);
+        await sendWithMarkdownFallback(
+          (opts) => update.api.sendMessage(chatId, replyText, opts),
+          sendOpts,
+          parseMode,
+          childLogger,
+          { chatId, op: 'callback.sendMessage' },
+        );
       });
     },
   };

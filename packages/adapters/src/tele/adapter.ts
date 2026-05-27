@@ -1,4 +1,5 @@
 import { Bot, type Context as GrammyContext } from 'grammy';
+import { sendWithMarkdownFallback } from './markdown-fallback.js';
 import type { AppContext, MessageAdapter, MessageCtx, Platform, ReplyOpts } from '@bot/contracts';
 import {
   buildInlineKeyboard,
@@ -126,7 +127,13 @@ export function createTeleAdapter(options: TeleAdapterOptions): TeleAdapter {
         const sendOpts: Record<string, unknown> = {};
         if (parseMode) sendOpts.parse_mode = parseMode;
         if (keyboard) sendOpts.reply_markup = keyboard;
-        await bot.api.sendMessage(chatId, text, sendOpts);
+        await sendWithMarkdownFallback(
+          (opts) => bot.api.sendMessage(chatId, text, opts),
+          sendOpts,
+          parseMode,
+          logger,
+          { chatId, op: 'sendMessage' },
+        );
       });
     },
     start,
