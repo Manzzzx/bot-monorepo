@@ -10,6 +10,15 @@ import pingFeature from './general/ping.js';
 import remindFeature from './general/remind/index.js';
 import startFeature from './general/start.js';
 import statsFeature from './general/stats.js';
+import tiktokFeature from './downloader/tiktok.js';
+import igdlFeature from './downloader/igdl.js';
+import fbdlFeature from './downloader/fbdl.js';
+import twitterFeature from './downloader/twitter.js';
+import ytmp3Feature from './downloader/ytmp3.js';
+import ytmp4Feature from './downloader/ytmp4.js';
+import spotifyFeature from './downloader/spotify.js';
+import pinterestFeature from './downloader/pinterest.js';
+import sfileFeature from './downloader/sfile.js';
 import broadcastFeature from './owner/broadcast.js';
 import evalFeature from './owner/eval.js';
 import shutdownFeature from './owner/shutdown.js';
@@ -64,7 +73,17 @@ export const staticFeatureRegistry = {
     { baseName: 'mute', feature: muteFeature },
     { baseName: 'welcome', feature: welcomeFeature },
   ],
-  downloader: [],
+  downloader: [
+    { baseName: 'tiktok', feature: tiktokFeature },
+    { baseName: 'igdl', feature: igdlFeature },
+    { baseName: 'fbdl', feature: fbdlFeature },
+    { baseName: 'twitter', feature: twitterFeature },
+    { baseName: 'ytmp3', feature: ytmp3Feature },
+    { baseName: 'ytmp4', feature: ytmp4Feature },
+    { baseName: 'spotify', feature: spotifyFeature },
+    { baseName: 'pinterest', feature: pinterestFeature },
+    { baseName: 'sfile', feature: sfileFeature },
+  ],
   stalker: [],
 } as const satisfies StaticFeatureRegistry;
 
