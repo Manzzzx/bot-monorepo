@@ -100,11 +100,13 @@ export function createTeleAdapter(options: TeleAdapterOptions): TeleAdapter {
     platform: PLATFORM,
     async sendMessage(chatId: string, text: string, opts?: ReplyOpts): Promise<void> {
       const keyboard = buildInlineKeyboard(opts?.buttons);
+      const parseMode = opts?.parseMode === 'markdown' ? 'Markdown' : opts?.parseMode === 'html' ? 'HTML' : undefined;
       await app.rateLimit.outbound(PLATFORM, chatId).schedule(async () => {
         if (opts?.media && 'buffer' in opts.media) {
           const grammy = await import('grammy');
           const inputFile = new grammy.InputFile(opts.media.buffer, opts.media.filename ?? 'file');
           const mediaOpts: Record<string, unknown> = { caption: text };
+          if (parseMode) mediaOpts.parse_mode = parseMode;
           if (keyboard) mediaOpts.reply_markup = keyboard;
           if (opts.media.mimeType.startsWith('image/')) {
             await bot.api.sendPhoto(chatId, inputFile, mediaOpts);
@@ -122,6 +124,7 @@ export function createTeleAdapter(options: TeleAdapterOptions): TeleAdapter {
           return;
         }
         const sendOpts: Record<string, unknown> = {};
+        if (parseMode) sendOpts.parse_mode = parseMode;
         if (keyboard) sendOpts.reply_markup = keyboard;
         await bot.api.sendMessage(chatId, text, sendOpts);
       });

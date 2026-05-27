@@ -175,6 +175,7 @@ export function createTeleMessageCtx(
     raw: update,
     async reply(replyText: string, opts?: ReplyOpts): Promise<void> {
       const keyboard = buildInlineKeyboard(opts?.buttons);
+      const parseMode = opts?.parseMode === 'markdown' ? 'Markdown' : opts?.parseMode === 'html' ? 'HTML' : undefined;
       await deps.app.rateLimit.outbound(PLATFORM, chatId).schedule(async () => {
         if (opts?.media && 'buffer' in opts.media) {
           const grammyMod = await import('grammy');
@@ -183,6 +184,7 @@ export function createTeleMessageCtx(
             opts.media.filename ?? 'file',
           );
           const mediaOpts: Record<string, unknown> = { caption: replyText };
+          if (parseMode) mediaOpts.parse_mode = parseMode;
           if (keyboard) mediaOpts.reply_markup = keyboard;
           if (opts.media.mimeType.startsWith('image/')) {
             await update.api.sendPhoto(chatId, inputFile, mediaOpts);
@@ -200,6 +202,7 @@ export function createTeleMessageCtx(
           return;
         }
         const sendOpts: Record<string, unknown> = {};
+        if (parseMode) sendOpts.parse_mode = parseMode;
         if (opts?.quote) sendOpts.reply_parameters = { message_id: Number(messageId) };
         if (keyboard) sendOpts.reply_markup = keyboard;
         await update.api.sendMessage(chatId, replyText, sendOpts);
@@ -311,6 +314,7 @@ export function createTeleCallbackCtx(
     raw: update,
     async reply(replyText: string, opts?: ReplyOpts): Promise<void> {
       const keyboard = buildInlineKeyboard(opts?.buttons);
+      const parseMode = opts?.parseMode === 'markdown' ? 'Markdown' : opts?.parseMode === 'html' ? 'HTML' : undefined;
       await deps.app.rateLimit.outbound(PLATFORM, chatId).schedule(async () => {
         if (opts?.media && 'buffer' in opts.media) {
           const grammyMod = await import('grammy');
@@ -319,6 +323,7 @@ export function createTeleCallbackCtx(
             opts.media.filename ?? 'file',
           );
           const mediaOpts: Record<string, unknown> = { caption: replyText };
+          if (parseMode) mediaOpts.parse_mode = parseMode;
           if (keyboard) mediaOpts.reply_markup = keyboard;
           if (opts.media.mimeType.startsWith('image/')) {
             await update.api.sendPhoto(chatId, inputFile, mediaOpts);
@@ -339,6 +344,7 @@ export function createTeleCallbackCtx(
         if (canEditInPlace) {
           try {
             const editOpts: Record<string, unknown> = {};
+            if (parseMode) editOpts.parse_mode = parseMode;
             if (keyboard) editOpts.reply_markup = keyboard;
             await update.api.editMessageText(
               chatId,
@@ -356,6 +362,7 @@ export function createTeleCallbackCtx(
         }
 
         const sendOpts: Record<string, unknown> = {};
+        if (parseMode) sendOpts.parse_mode = parseMode;
         if (keyboard) sendOpts.reply_markup = keyboard;
         await update.api.sendMessage(chatId, replyText, sendOpts);
       });

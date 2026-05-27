@@ -28,10 +28,13 @@ export interface ReplyButton {
   url?: string;
 }
 
+export type ParseMode = 'markdown' | 'html';
+
 export interface ReplyOpts {
   quote?: boolean | undefined;
   mentions?: string[] | undefined;
   media?: MediaRef | ReplyMedia | undefined;
+  parseMode?: ParseMode | undefined;
   /**
    * Inline keyboard rows. Outer = rows, inner = buttons in that row.
    * Adapters whose `capabilities.buttons` is false silently ignore this.
