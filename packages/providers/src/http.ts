@@ -26,6 +26,12 @@ export interface HttpFetchBufferOpts {
   maxBytes: number;
   timeoutMs?: number;
   headers?: Record<string, string>;
+  /**
+   * Provider name to tag any ProviderError raised by this fetch. Defaults
+   * to 'unknown' when not provided so postmortem traces still attribute the
+   * failure to a real source instead of a sentinel '-'.
+   */
+  provider?: ProviderName | 'unknown';
 }
 
 const DEFAULT_RESPONSE_MAX_BYTES = 4 * 1024 * 1024;
@@ -80,10 +86,7 @@ export class HttpClient {
     return limiter.schedule(async () => {
       const fullUrl = buildUrl(url, opts.query);
       const controller = new AbortController();
-      const timeout = setTimeout(
-        () => controller.abort(),
-        opts.timeoutMs ?? this.config.timeoutMs,
-      );
+      const timeout = setTimeout(() => controller.abort(), opts.timeoutMs ?? this.config.timeoutMs);
       try {
         const response = await request(fullUrl, {
           method: 'GET',
@@ -96,12 +99,7 @@ export class HttpClient {
           });
         }
         const cap = opts.maxBytes ?? this.responseMaxBytes;
-        return await readBoundedJson<T>(
-          provider,
-          url,
-          response.body as AsyncIterable<Buffer>,
-          cap,
-        );
+        return await readBoundedJson<T>(provider, url, response.body as AsyncIterable<Buffer>, cap);
       } catch (error) {
         if (error instanceof ProviderError) throw error;
         if ((error as { name?: string }).name === 'AbortError') {
@@ -118,11 +116,9 @@ export class HttpClient {
     url: string,
     opts: HttpFetchBufferOpts,
   ): Promise<{ buffer: Buffer; mimeType: string }> {
+    const provider = opts.provider ?? 'unknown';
     const controller = new AbortController();
-    const timeout = setTimeout(
-      () => controller.abort(),
-      opts.timeoutMs ?? this.config.timeoutMs,
-    );
+    const timeout = setTimeout(() => controller.abort(), opts.timeoutMs ?? this.config.timeoutMs);
     try {
       const response = await request(url, {
         method: 'GET',
@@ -130,7 +126,7 @@ export class HttpClient {
         signal: controller.signal,
       });
       if (response.statusCode >= 400) {
-        throw new ProviderError('-', url, statusToKind(response.statusCode), {
+        throw new ProviderError(provider, url, statusToKind(response.statusCode), {
           status: response.statusCode,
         });
       }
@@ -139,7 +135,7 @@ export class HttpClient {
       for await (const chunk of response.body as AsyncIterable<Buffer>) {
         total += chunk.length;
         if (total > opts.maxBytes) {
-          throw new ProviderError('-', url, 'validation', { detail: 'file_too_large' });
+          throw new ProviderError(provider, url, 'validation', { detail: 'file_too_large' });
         }
         chunks.push(chunk);
       }
@@ -149,9 +145,9 @@ export class HttpClient {
     } catch (error) {
       if (error instanceof ProviderError) throw error;
       if ((error as { name?: string }).name === 'AbortError') {
-        throw new ProviderError('-', url, 'timeout', { cause: error });
+        throw new ProviderError(provider, url, 'timeout', { cause: error });
       }
-      throw new ProviderError('-', url, 'http', { cause: error });
+      throw new ProviderError(provider, url, 'http', { cause: error });
     } finally {
       clearTimeout(timeout);
     }

@@ -140,13 +140,12 @@ describe('HttpClient.fetchBuffer', () => {
   });
 
   it('throws validation when over maxBytes', async () => {
-    requestMock.mockResolvedValueOnce(
-      streamResponse(200, [Buffer.alloc(600), Buffer.alloc(600)]),
-    );
+    requestMock.mockResolvedValueOnce(streamResponse(200, [Buffer.alloc(600), Buffer.alloc(600)]));
     const http = new HttpClient({ timeoutMs: 1000, minTimeMs: 0, maxConcurrent: 4 });
-    await expect(
-      http.fetchBuffer('https://cdn/x.mp4', { maxBytes: 1000 }),
-    ).rejects.toMatchObject({ kind: 'validation', detail: 'file_too_large' });
+    await expect(http.fetchBuffer('https://cdn/x.mp4', { maxBytes: 1000 })).rejects.toMatchObject({
+      kind: 'validation',
+      detail: 'file_too_large',
+    });
   });
 
   it('maps 4xx to validation/unauthorized/rate_limit', async () => {
@@ -156,9 +155,38 @@ describe('HttpClient.fetchBuffer', () => {
       body: asyncBuffers([]),
     });
     const http = new HttpClient({ timeoutMs: 1000, minTimeMs: 0, maxConcurrent: 4 });
-    await expect(http.fetchBuffer('https://cdn/missing', { maxBytes: 1024 })).rejects.toMatchObject({
-      kind: 'http',
-      status: 404,
+    await expect(http.fetchBuffer('https://cdn/missing', { maxBytes: 1024 })).rejects.toMatchObject(
+      {
+        kind: 'http',
+        status: 404,
+      },
+    );
+  });
+
+  it('tags ProviderError with the supplied provider name', async () => {
+    requestMock.mockResolvedValueOnce({
+      statusCode: 500,
+      headers: {},
+      body: asyncBuffers([]),
     });
+    const http = new HttpClient({ timeoutMs: 1000, minTimeMs: 0, maxConcurrent: 4 });
+    const error = await http
+      .fetchBuffer('https://cdn/x.mp4', { maxBytes: 1024, provider: 'covenant' })
+      .catch((err) => err);
+    expect(error).toBeInstanceOf(ProviderError);
+    expect((error as ProviderError).provider).toBe('covenant');
+  });
+
+  it('falls back to "unknown" when provider is not provided', async () => {
+    requestMock.mockResolvedValueOnce({
+      statusCode: 500,
+      headers: {},
+      body: asyncBuffers([]),
+    });
+    const http = new HttpClient({ timeoutMs: 1000, minTimeMs: 0, maxConcurrent: 4 });
+    const error = await http
+      .fetchBuffer('https://cdn/x.mp4', { maxBytes: 1024 })
+      .catch((err) => err);
+    expect((error as ProviderError).provider).toBe('unknown');
   });
 });
