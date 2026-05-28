@@ -1,5 +1,5 @@
 import type { AppContext, FeatureCategory, MessageCtx, RegisteredCommand } from '@bot/contracts';
-import { appFromCtx as coreAppFromCtx } from '@bot/core';
+import { appFromCtx as coreAppFromCtx, isOwnerMatch } from '@bot/core';
 
 export type AppBoundMessageCtx<TDb = unknown> = MessageCtx & { app?: AppContext<TDb> };
 
@@ -9,7 +9,7 @@ export function appFromCtx<TDb = unknown>(ctx: MessageCtx): AppContext<TDb> {
 
 export function isOwner(ctx: MessageCtx, app: Pick<AppContext, 'config'>): boolean {
   const ownerId = ctx.platform === 'wa' ? app.config.OWNER_WA : app.config.OWNER_TG;
-  return Boolean(ownerId && ownerId === ctx.userId);
+  return isOwnerMatch(ctx.platform, ctx.userId, ownerId);
 }
 
 export function categoryTitle(category: FeatureCategory): string {

@@ -1,5 +1,6 @@
 import type { AppContext, MessageCtx, Middleware } from '@bot/contracts';
 import { GuardRejection } from '../errors.js';
+import { isOwnerMatch } from '../owner-id.js';
 
 type OwnerConfigApp = Pick<AppContext, 'config'>;
 type AppBoundMessageCtx = MessageCtx & { app?: OwnerConfigApp };
@@ -14,7 +15,8 @@ export function requireOwner(app?: OwnerConfigApp): Middleware {
     if (!resolvedApp) throw new GuardRejection('Owner config unavailable.');
 
     const ownerId = ownerIdFor(ctx, resolvedApp);
-    if (!ownerId || ctx.userId !== ownerId) throw new GuardRejection('Owner only command.');
+    if (!isOwnerMatch(ctx.platform, ctx.userId, ownerId))
+      throw new GuardRejection('Owner only command.');
 
     await next();
   };

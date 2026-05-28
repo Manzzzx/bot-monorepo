@@ -73,6 +73,34 @@ describe('core middleware', () => {
     expect(next).toHaveBeenCalledOnce();
   });
 
+  it('matches WhatsApp owners with a device suffix on the JID', async () => {
+    const app = createMockApp({
+      config: {
+        ...createMockApp().config,
+        OWNER_WA: '628123@s.whatsapp.net',
+      },
+    } as Partial<AppContext>);
+    const ctx = createMockCtx({ platform: 'wa', userId: '628123:42@s.whatsapp.net' });
+
+    const next = await runMiddleware(ctx, requireOwner(app));
+
+    expect(next).toHaveBeenCalledOnce();
+  });
+
+  it('matches when only the local part is configured', async () => {
+    const app = createMockApp({
+      config: {
+        ...createMockApp().config,
+        OWNER_WA: '628123',
+      },
+    } as Partial<AppContext>);
+    const ctx = createMockCtx({ platform: 'wa', userId: '628123:7@s.whatsapp.net' });
+
+    const next = await runMiddleware(ctx, requireOwner(app));
+
+    expect(next).toHaveBeenCalledOnce();
+  });
+
   it('rejects non-owners', async () => {
     const app = createMockApp();
     const ctx = createMockCtx({ platform: 'tele', userId: 'intruder' });
