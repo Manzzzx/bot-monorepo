@@ -22,7 +22,8 @@
     "dev:tele": "cross-env NODE_ENV=development turbo run dev --filter=@app/tele",
     "prisma:generate": "prisma generate",
     "prisma:migrate": "prisma migrate dev",
-    "prisma:deploy": "prisma migrate deploy"
+    "prisma:deploy": "prisma migrate deploy",
+    "postinstall": "node scripts/postinstall.cjs"
   },
   "engines": {
     "node": ">=20.0.0",
