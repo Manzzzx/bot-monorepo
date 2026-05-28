@@ -14,8 +14,12 @@ type ReminderRow = {
 };
 
 const MAX_DELIVERY_ATTEMPTS = 3;
+const RETRY_BASE_MS = 60_000;
+const RETRY_MAX_MS = 30 * 60_000;
 
-
+function backoffMs(attempt: number): number {
+  return Math.min(RETRY_BASE_MS * 2 ** Math.max(0, attempt - 1), RETRY_MAX_MS);
+}
 
 function idFromPayload(payload: unknown): string | null {
   if (typeof payload === 'string')
@@ -72,9 +76,19 @@ export async function fireReminder(
     return;
   }
 
+  const platform = parsePlatform(reminder.platform);
+  if (!platform) {
+    reminderApp.logger.warn(
+      { reminderId: reminder.id, platform: reminder.platform, status: 'rejected' },
+      'Reminder skip: unknown platform',
+    );
+    await reminderRepo.markFailed(reminderApp.db, reminder.id, new Error('unknown platform'));
+    return;
+  }
+
   try {
     await reminderApp.adapters
-      .get((parsePlatform(reminder.platform) ?? 'wa'))
+      .get(platform)
       .sendMessage(reminder.chatId, `⏰ Reminder: ${reminder.text}`);
     await reminderRepo.markDone(reminderApp.db, reminder.id);
   } catch (error) {
@@ -88,10 +102,17 @@ export async function fireReminder(
       return;
     }
 
-    await reminderRepo.incrementAttempt(reminderApp.db, reminder.id, error);
+    const nextDueAt = new Date(Date.now() + backoffMs(nextAttempt));
+    await reminderRepo.incrementAttempt(reminderApp.db, reminder.id, error, nextDueAt);
     reminderApp.logger.warn(
-      { err: error, reminderId: reminder.id, attempt: nextAttempt, status: 'recoverable' },
-      'Reminder delivery failed; will retry on next tick',
+      {
+        err: error,
+        reminderId: reminder.id,
+        attempt: nextAttempt,
+        nextDueAt: nextDueAt.toISOString(),
+        status: 'recoverable',
+      },
+      'Reminder delivery failed; scheduled retry with backoff',
     );
   }
 }
