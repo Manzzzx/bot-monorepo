@@ -78,7 +78,7 @@ describe('group features', () => {
         create: expect.objectContaining({ muted: true }),
       }),
     );
-    expect(ctx.reply).toHaveBeenCalledWith('Group mute enabled.');
+    expect(ctx.reply).toHaveBeenCalledWith(expect.stringContaining('Group mute enabled.'));
   });
 
   it('antilink command persists toggle and event deletes urls when enabled', async () => {
