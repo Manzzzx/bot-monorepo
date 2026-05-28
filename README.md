@@ -1,16 +1,19 @@
 # bot-monorepo
 
-Multi-platform chat bot untuk **WhatsApp** dan **Telegram** dengan satu command core. Modular per kategori, persistent di SQLite, ship ke Pterodactyl lewat CI build branch `deploy`.
+Multi-platform chat bot untuk **WhatsApp** dan **Telegram** dengan satu command core. Modular per kategori, persistent di SQLite, dual-provider downloader/stalker dengan circuit breaker, ship ke Pterodactyl lewat CI build branch `deploy`.
 
 > [!NOTE]
-> Tulis feature sekali, route lewat `MessageCtx`, jalan di kedua adapter dengan guard, logging, rate limit, dan inline button (kalau platform support) yang sama.
+> Tulis feature sekali, route lewat `MessageCtx`, jalan di kedua adapter dengan guard, logging, rate limit, retry, dan inline button (kalau platform support) yang sama.
 
 ## Highlights
 
 - **Multi-platform core** via abstraksi `MessageCtx` di atas Baileys + grammY.
-- **Modular features** per kategori (`general/`, `owner/`, `group/`) dengan auto-injected guards.
-- **Persistent reminders** dengan transactional claim, restart catchup, recovery row stuck.
+- **Modular features** per kategori (`general/`, `owner/`, `group/`, `downloader/`, `stalker/`) dengan auto-injected guards per folder.
+- **Dual-provider hub** (siputzx + covenant) dengan primary/fallback routing, per-provider circuit breaker, dan response size cap untuk proteksi memory.
+- **Persistent reminders** dengan transactional claim, restart catchup, recovery row stuck, exponential backoff retry (1m → 30m).
 - **Telegram inline buttons** edit-in-place via callback; WA tetap text-only via capability flag.
+- **Typed event bus** dengan payload map per `EventName`; handler isolasi pakai `Promise.allSettled` (satu rejection ngga matiin sub yang lain).
+- **Group admin guard** delegasi ke adapter (`groupMetadata.participants` di WA, `getChatMember` di Tele) dengan TTL+LRU cache.
 - **Structured logging** dual sink: pretty terminal (kolom rapi, warna per status) + JSON daily file (rotate 7 hari, TZ-aware).
 - **PII masking** otomatis di terminal log (`6289****8933`, `grp:1203****`, dll); JSON file tetap raw lengkap untuk forensics.
 - **Encrypted WA auth** at rest pakai AES-256-GCM + `AUTH_ENCRYPTION_KEY`.
@@ -27,6 +30,7 @@ Multi-platform chat bot untuk **WhatsApp** dan **Telegram** dengan satu command 
 | WhatsApp    | `@whiskeysockets/baileys`                                    |
 | Telegram    | `grammy` + `@grammyjs/conversations`                         |
 | Database    | Prisma 7 + SQLite (WAL) via `@prisma/adapter-better-sqlite3` |
+| HTTP        | `undici` (streaming + abortable, response cap)               |
 | Scheduler   | `croner`                                                     |
 | Rate limit  | `bottleneck`                                                 |
 | Middleware  | `koa-compose`                                                |
@@ -42,10 +46,12 @@ apps/
   wa/             # WhatsApp-only entry
   tele/           # Telegram-only entry
 packages/
-  contracts/      # shared types: MessageCtx, Feature, AppContext, ReplyButton, ChatType
+  contracts/      # shared types: MessageCtx, Feature, AppContext, EventPayloads
+                  # subpath '@bot/contracts/testing' isolasi vitest helper dari main bundle
   core/           # router, parser, command-registry, middleware, scheduler, event-bus, errors
-  features/       # general/, owner/, group/ feature modules
-  adapters/       # WA + Telegram adapter glue, registry
+  features/       # general/, owner/, group/, downloader/, stalker/ feature modules
+  adapters/       # WA + Telegram adapter glue, registry, GroupAdminCache (TTL+LRU)
+  providers/      # siputzx + covenant, ProviderHub, CircuitBreaker, HttpClient
   db/             # Prisma client + repositories
   utils/          # config (zod), logger (pino + custom prettifier), crypto, time
 prisma/           # schema + migrations
@@ -64,7 +70,7 @@ npm install
 
 # 2. Configure
 cp .env.example .env
-# isi AUTH_ENCRYPTION_KEY, OWNER_WA, OWNER_TG, TELEGRAM_BOT_TOKEN
+# isi AUTH_ENCRYPTION_KEY, OWNER_WA, OWNER_TG, TELEGRAM_BOT_TOKEN, COVENANT_API_KEY (opsional)
 
 # 3. Database
 npx prisma migrate dev
@@ -85,12 +91,15 @@ Boot pertama WA prints QR di terminal; scan dari device. Auth blob disimpan tere
 
 Prefix `/` atau `.` di kedua platform. Contoh: `/ping` ≡ `.ping`.
 
-| Kategori | Commands                                              |
-| -------- | ----------------------------------------------------- |
-| General  | `/ping`, `/stats`, `/help`, `/menu`, `/start`         |
-| General  | `/remind`, `/reminders`, `/cancelreminder`            |
-| Owner    | `/eval`, `/broadcast`, `/shutdown`                    |
-| Group    | `/kick`, `/mute`, `/antilink`, `/welcome`             |
+| Kategori     | Commands                                                                                           |
+| ------------ | -------------------------------------------------------------------------------------------------- |
+| General      | `/ping`, `/stats`, `/help`, `/menu`, `/start`                                                      |
+| General      | `/remind`, `/reminders`, `/cancelreminder`                                                         |
+| Owner        | `/eval`, `/broadcast`, `/shutdown`                                                                 |
+| Group        | `/kick`, `/mute`, `/antilink`, `/welcome`                                                          |
+| Downloader   | `/tiktok`, `/igdl`, `/fbdl`, `/twitter`, `/ytmp3`, `/ytmp4`, `/spotify`, `/pinterest`, `/sfile`    |
+| Stalker      | `/igstalk`, `/ttstalk`, `/ghstalk`, `/twitterstalk`, `/threadsstalk`, `/pinstalk`, `/ytstalk`,     |
+|              | `/robloxstalk`, `/fbstalk`, `/ffstalk`, `/mlstalk`, `/pixivstalk`, `/wastalk`                      |
 
 > [!TIP]
 > Telegram replies attach inline button (Refresh, Menu, Back). Tap = edit message asal in place, bukan kirim baru. WA tetap text-only karena `capabilities.buttons = false`.
@@ -136,31 +145,63 @@ const ping: Feature = {
 export default ping;
 ```
 
-| Folder      | Guard otomatis                      |
-| ----------- | ----------------------------------- |
-| `general/`  | tanpa guard                         |
-| `owner/`    | `requireOwner()`                    |
-| `group/`    | `requireGroup()` + `requireOwner()` |
+| Folder        | Guard otomatis        | Catatan                                                                  |
+| ------------- | --------------------- | ------------------------------------------------------------------------ |
+| `general/`    | tanpa guard           | semua chat                                                               |
+| `owner/`      | `requireOwner()`      | hanya `OWNER_WA` / `OWNER_TG`                                            |
+| `group/`      | `requireGroupAdmin()` | platform admin (groupMetadata / getChatMember), fallback bot owner.      |
+|               |                       | Refuse di DM agar `Group` row tidak ke-upsert pakai chat private id.     |
+| `downloader/` | tanpa guard           | dispatch lewat `ProviderHub`                                             |
+| `stalker/`    | tanpa guard           | dispatch lewat `ProviderHub`                                             |
 
 `reply()` helper otomatis strip `buttons` di platform yang tidak support, dan auto-append baris `⬅ Kembali` (set `backTo: false` di root screen seperti `/menu` atau `/start`).
+
+> [!CAUTION]
+> `/eval` di-gate: refuse runtime saat `NODE_ENV=production`. `node:vm` bukan sandbox, jadi command ini cuma boleh aktif di lokal/dev. Untuk production sandbox sungguhan, swap ke `isolated-vm`.
+
+## Provider hub
+
+Downloader + stalker route lewat `ProviderHub`:
+
+```mermaid
+flowchart LR
+  Cmd[/tiktok url/] --> Hub[ProviderHub]
+  Hub -->|primary| Siputzx
+  Siputzx -->|fail/timeout| Breaker[CircuitBreaker]
+  Breaker -->|open| Hub
+  Hub -->|fallback| Covenant
+  Covenant --> Result
+  Siputzx --> Result
+```
+
+- **Primary/fallback** ditentukan via `PROVIDER_PRIMARY` + `PROVIDER_FALLBACK` (default `siputzx` → `covenant`).
+- **CircuitBreaker** per provider: open setelah `PROVIDER_CIRCUIT_THRESHOLD` consecutive fail, half-open setelah `PROVIDER_CIRCUIT_COOLDOWN_MS`.
+- **HTTP cap**: `HttpClient.get` stream body via `undici` dan abort dengan `validation/response_too_large` setelah 4 MiB (default `responseMaxBytes`). Mencegah provider yang kompromi/abnormal menguras memory.
+- **Validation** + **unauthorized** error tidak retried ke fallback (deterministik client-side); error lain di-route ulang.
 
 ## Configuration
 
 Semua config divalidasi `zod` di `@bot/utils/config.ts`. Field utama:
 
-| Variable                                          | Required        | Notes                                                                |
-| ------------------------------------------------- | --------------- | -------------------------------------------------------------------- |
-| `NODE_ENV`                                        | yes             | `development` / `production` / `test`                                |
-| `TZ`                                              | yes             | IANA TZ name; validated via Intl; fallback `Asia/Jakarta`            |
-| `DATABASE_URL`                                    | yes             | contoh: `file:/home/container/data/bot.db`                           |
-| `AUTH_ENCRYPTION_KEY`                             | yes             | 64-hex, encrypts WA auth blob at rest                                |
-| `WA_ENABLED` / `OWNER_WA`                         | yes kalau WA on | JID owner (`62…@s.whatsapp.net`)                                     |
-| `TELE_ENABLED` / `TELEGRAM_BOT_TOKEN` / `OWNER_TG`| yes kalau Tele on| token dari BotFather, OWNER_TG = username/id                        |
-| `LOG_LEVEL`                                       | optional        | `trace`/`debug`/`info`/`warn`/`error`; default `info`                |
-| `LOG_DIR`                                         | optional        | direktori log; default `<cwd>/data/log`                              |
-| `LOG_NO_COLOR`                                    | optional        | `true` untuk disable warna terminal                                  |
-| `LOG_PII`                                         | optional        | `true` = tampilkan ID raw di terminal (dev only). JSON file selalu raw.|
-| `WA_RATE_MIN_TIME_MS` / `TELE_RATE_MIN_TIME_MS`   | optional        | jeda min antar outbound per chat                                     |
+| Variable                                          | Required          | Notes                                                                |
+| ------------------------------------------------- | ----------------- | -------------------------------------------------------------------- |
+| `NODE_ENV`                                        | yes               | `development` / `production` / `test`                                |
+| `TZ`                                              | yes               | IANA TZ name; validated via Intl; fallback `Asia/Jakarta`            |
+| `DATABASE_URL`                                    | yes               | default `file:./data/bot.db`; relative di-resolve dari project root  |
+| `AUTH_ENCRYPTION_KEY`                             | yes               | 64-hex, encrypts WA auth blob at rest                                |
+| `WA_ENABLED` / `OWNER_WA`                         | yes kalau WA on   | JID owner (`62…@s.whatsapp.net`)                                     |
+| `TELE_ENABLED` / `TELEGRAM_BOT_TOKEN` / `OWNER_TG` | yes kalau Tele on | token dari BotFather, OWNER_TG = username/id                         |
+| `LOG_LEVEL`                                       | optional          | `trace`/`debug`/`info`/`warn`/`error`; default `info`                |
+| `LOG_DIR`                                         | optional          | direktori log; default `./data/log`                                  |
+| `LOG_NO_COLOR`                                    | optional          | `true` untuk disable warna terminal                                  |
+| `LOG_PII`                                         | optional          | `true` = tampilkan ID raw di terminal (dev only). JSON file selalu raw. |
+| `WA_RATE_MIN_TIME_MS` / `TELE_RATE_MIN_TIME_MS`   | optional          | jeda min antar outbound per chat                                     |
+| `COVENANT_API_KEY`                                | optional          | kosong → covenant disabled, fallback downloader/stalker unavailable  |
+| `PROVIDER_PRIMARY` / `PROVIDER_FALLBACK`          | optional          | `siputzx` / `covenant`; harus berbeda                                |
+| `PROVIDER_HTTP_TIMEOUT_MS`                        | optional          | timeout per request (default 15000)                                  |
+| `PROVIDER_RATE_MIN_TIME_MS` / `PROVIDER_MAX_CONCURRENT` | optional    | bottleneck per provider                                              |
+| `PROVIDER_CIRCUIT_THRESHOLD` / `PROVIDER_CIRCUIT_COOLDOWN_MS` | optional | circuit breaker tuning                                               |
+| `PROVIDER_DOWNLOAD_MAX_BYTES`                     | optional          | cap untuk `fetchMedia` buffer (default 100 MiB)                      |
 
 Tipe `AppConfig` di `@bot/contracts` dijaga compile-time terhadap zod schema; schema drift = build fail.
 
@@ -203,10 +244,28 @@ jq 'select(.level >= 50)' data/log/bot.2026-05-27.1.log
 ## Reliability
 
 - **Reminder recovery**: tiap scheduler tick reset reminder yang stuck di status `firing` >5 menit kembali ke `pending`. Crash mid-fire tidak meninggalkan row terkunci.
+- **Reminder retry**: delivery error masuk `incrementAttempt` dengan exponential backoff (`dueAt += 1m → 2m → 4m`, capped 30m). Setelah 3x gagal → `markFailed`. Adapter down ngga storm-retry tiap 30 detik.
 - **Crash handling**: `uncaughtException` + `unhandledRejection` route ke graceful shutdown yang sama (pause adapter → stop scheduler → drain in-flight → disconnect Prisma → flush log → exit `1`). Stop normal exit `0`. Panel bisa bedakan crash vs clean stop.
-- **Error boundary** middleware: per-message error di-log dengan `traceId` dan reply ke user `Internal error. Trace: <id>`, tapi **tidak** flush logs. Flush dipakai khusus jalur fatal/exit.
+- **Error boundary** middleware: per-message error di-log dengan `traceId` (server side) dan reply ke user `Internal error. Please try again later.` (traceId tidak di-leak ke chat).
+- **Event handler isolation**: `InMemoryEventBus.emit` pakai `Promise.allSettled` + log per-handler rejection. Satu subscriber buggy ngga membatalkan handler lain di event yang sama.
 - **TZ preflight**: `bootstrap.ts` validate `process.env.TZ` via `Intl.DateTimeFormat` sebelum modul lain di-import. Typo (`Asai/Jakarta`) → stderr warning + auto-fallback `Asia/Jakarta`.
 - **Logger transport fallback**: kalau worker `pino-roll` mati (disk penuh, dll), 1 baris JSON `level:60 status:fatal` di-emit ke stderr supaya tetap visible di `docker logs`/`journalctl`/panel.
+- **HTTP response cap**: `HttpClient.get` streaming + abort di `responseMaxBytes` (4 MiB default) sebelum `JSON.parse`. Provider kompromi tidak bisa exhaust memory.
+- **Group admin cache**: TTL 60s + LRU 5k entries; touch on read so hot admin survives eviction. Mengurangi round-trip `groupMetadata`/`getChatMember` per pesan.
+
+## Testing
+
+```bash
+npm test                # run all workspaces
+npm run lint            # eslint --max-warnings=0
+npm run test:coverage   # vitest dengan v8 coverage
+```
+
+Test helper untuk mock `MessageCtx` di-isolasi via subpath agar `vitest` tidak masuk ke main bundle:
+
+```ts
+import { createMockCtx } from '@bot/contracts/testing';
+```
 
 ## Deployment
 
