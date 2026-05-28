@@ -6,6 +6,8 @@ export default defineWorkspace([
       name: '@app/bot',
       root: './apps/bot',
       include: ['src/**/*.test.ts', 'src/**/*.spec.ts'],
+      setupFiles: ['../../vitest.setup.ts'],
+      exclude: ['dist/**', 'node_modules/**'],
     },
   },
   {
@@ -13,6 +15,8 @@ export default defineWorkspace([
       name: '@app/wa',
       root: './apps/wa',
       include: ['src/**/*.test.ts', 'src/**/*.spec.ts'],
+      setupFiles: ['../../vitest.setup.ts'],
+      exclude: ['dist/**', 'node_modules/**'],
     },
   },
   {
@@ -20,6 +24,8 @@ export default defineWorkspace([
       name: '@app/tele',
       root: './apps/tele',
       include: ['src/**/*.test.ts', 'src/**/*.spec.ts'],
+      setupFiles: ['../../vitest.setup.ts'],
+      exclude: ['dist/**', 'node_modules/**'],
     },
   },
   {
@@ -27,6 +33,8 @@ export default defineWorkspace([
       name: '@bot/contracts',
       root: './packages/contracts',
       include: ['src/**/*.test.ts', 'src/**/*.spec.ts'],
+      setupFiles: ['../../vitest.setup.ts'],
+      exclude: ['dist/**', 'node_modules/**'],
     },
   },
   {
@@ -34,6 +42,8 @@ export default defineWorkspace([
       name: '@bot/core',
       root: './packages/core',
       include: ['src/**/*.test.ts', 'src/**/*.spec.ts'],
+      setupFiles: ['../../vitest.setup.ts'],
+      exclude: ['dist/**', 'node_modules/**'],
     },
   },
   {
@@ -41,6 +51,8 @@ export default defineWorkspace([
       name: '@bot/adapters',
       root: './packages/adapters',
       include: ['src/**/*.test.ts', 'src/**/*.spec.ts'],
+      setupFiles: ['../../vitest.setup.ts'],
+      exclude: ['dist/**', 'node_modules/**'],
     },
   },
   {
@@ -48,6 +60,8 @@ export default defineWorkspace([
       name: '@bot/db',
       root: './packages/db',
       include: ['src/**/*.test.ts', 'src/**/*.spec.ts'],
+      setupFiles: ['../../vitest.setup.ts'],
+      exclude: ['dist/**', 'node_modules/**'],
     },
   },
   {
@@ -55,6 +69,8 @@ export default defineWorkspace([
       name: '@bot/features',
       root: './packages/features',
       include: ['src/**/*.test.ts', 'src/**/*.spec.ts'],
+      setupFiles: ['../../vitest.setup.ts'],
+      exclude: ['dist/**', 'node_modules/**'],
     },
   },
   {
@@ -62,6 +78,8 @@ export default defineWorkspace([
       name: '@bot/utils',
       root: './packages/utils',
       include: ['src/**/*.test.ts', 'src/**/*.spec.ts'],
+      setupFiles: ['../../vitest.setup.ts'],
+      exclude: ['dist/**', 'node_modules/**'],
     },
   },
 ]);
