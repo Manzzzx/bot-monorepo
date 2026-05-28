@@ -1,5 +1,10 @@
-import type { AppContext, Feature, GroupJoinPayload, ReplyButton } from '@bot/contracts';
-import { parsePlatform } from '@bot/contracts';
+import type {
+  AppContext,
+  Feature,
+  GroupJoinPayload,
+  GroupJoinUser,
+  ReplyButton,
+} from '@bot/contracts';
 import { reply } from '@bot/contracts';
 import {
   appFromCtx,
@@ -9,66 +14,37 @@ import {
   upsertGroupConfig,
 } from './_shared.js';
 
-type JoinUser = {
-  id: string;
-  name?: string;
-};
-
-type JoinPayload = {
-  platform?: unknown;
-  chatId?: unknown;
-  groupId?: unknown;
-  groupName?: unknown;
-  userId?: unknown;
-  userName?: unknown;
-  users?: unknown;
-};
-
-
-
-function makeUser(id: string, name?: unknown): JoinUser {
-  return typeof name === 'string' ? { id, name } : { id };
-}
-
-function joinUsers(payload: JoinPayload): JoinUser[] {
-  if (Array.isArray(payload.users)) {
-    return payload.users
-      .map((user) => {
-        if (typeof user === 'string') return makeUser(user);
-        if (typeof user !== 'object' || user === null) return null;
-        const candidate = user as Partial<JoinUser>;
-        return typeof candidate.id === 'string' ? makeUser(candidate.id, candidate.name) : null;
-      })
-      .filter((user): user is JoinUser => user !== null);
+function joinUsers(payload: GroupJoinPayload): GroupJoinUser[] {
+  if (payload.users && payload.users.length > 0) return payload.users;
+  if (payload.userId) {
+    const user: GroupJoinUser = payload.userName
+      ? { id: payload.userId, name: payload.userName }
+      : { id: payload.userId };
+    return [user];
   }
-
-  return typeof payload.userId === 'string' ? [makeUser(payload.userId, payload.userName)] : [];
+  return [];
 }
 
-function renderWelcome(template: string, user: JoinUser, groupName: string): string {
+function renderWelcome(template: string, user: GroupJoinUser, groupName: string): string {
   return template.replaceAll('{user}', user.name ?? user.id).replaceAll('{group}', groupName);
 }
 
 async function sendWelcome(payload: GroupJoinPayload, app: AppContext): Promise<void> {
   const groupApp = app as GroupApp;
-  
-
-  const event = payload as JoinPayload;
-  const platform = parsePlatform(event.platform);
-  const chatId = typeof event.chatId === 'string' ? event.chatId : event.groupId;
-  if (!platform || typeof chatId !== 'string') return;
+  const chatId = payload.chatId || payload.groupId;
+  if (!chatId) return;
 
   const db = groupApp.db as GroupDb;
   const group = await db.group.findUnique({
-    where: { platform_externalId: { platform, externalId: chatId } },
+    where: { platform_externalId: { platform: payload.platform, externalId: chatId } },
     include: { config: true },
   });
   const template = group?.config?.welcomeMsg;
   if (!template) return;
 
-  const groupName = typeof event.groupName === 'string' ? event.groupName : chatId;
-  const adapter = groupApp.adapters.get(platform);
-  for (const user of joinUsers(event)) {
+  const groupName = payload.groupName ?? chatId;
+  const adapter = groupApp.adapters.get(payload.platform);
+  for (const user of joinUsers(payload)) {
     await adapter.sendMessage(chatId, renderWelcome(template, user, groupName));
   }
 }
