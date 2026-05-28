@@ -14,9 +14,15 @@ function ownerIdFor(ctx: MessageCtx, app: Pick<AppContext, 'config'>): string | 
 /**
  * Permit when the user is a platform-side group admin. Falls back to bot owner
  * if the adapter does not implement `isGroupAdmin` (e.g. test stubs).
+ *
+ * Refuses outright in non-group chats so owner DMs cannot trigger group-only
+ * mutations (e.g. `/antilink`, `/welcome`) which would otherwise upsert a
+ * Group row keyed by a private chat id.
  */
 export function requireGroupAdmin(): Middleware {
   return async function groupAdminGuard(ctx, next) {
+    if (!ctx.isGroup) throw new GuardRejection('Group only command.');
+
     const app = (ctx as AppBoundCtx).app;
     if (!app) throw new GuardRejection('App context unavailable.');
 
