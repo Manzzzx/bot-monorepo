@@ -19,9 +19,7 @@ function commandFor(ctx: MessageCtx): Command {
 function buildUsageMessage(command: Command): string {
   const lines: string[] = [];
   lines.push(
-    command.description
-      ? `📌 *${command.name}* — ${command.description}`
-      : `📌 *${command.name}*`,
+    command.description ? `📌 *${command.name}* — ${command.description}` : `📌 *${command.name}*`,
   );
   lines.push('');
   lines.push(`Cara pakai: \`${command.usage ?? `/${command.name}`}\``);

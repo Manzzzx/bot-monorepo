@@ -9,13 +9,7 @@ import {
   escapeMarkdown,
 } from './_registry.js';
 
-const CATEGORY_ORDER: FeatureCategory[] = [
-  'general',
-  'downloader',
-  'stalker',
-  'group',
-  'owner',
-];
+const CATEGORY_ORDER: FeatureCategory[] = ['general', 'downloader', 'stalker', 'group', 'owner'];
 
 const CATEGORY_ALIASES: Record<string, FeatureCategory> = {
   general: 'general',
@@ -65,10 +59,7 @@ function buildOverview(byCategory: Map<FeatureCategory, RegisteredCommand[]>): s
   return lines.join('\n');
 }
 
-function buildCategoryView(
-  category: FeatureCategory,
-  list: RegisteredCommand[],
-): string {
+function buildCategoryView(category: FeatureCategory, list: RegisteredCommand[]): string {
   const lines = [
     `${categoryEmoji(category)} *${categoryTitle(category).toUpperCase()}*`,
     DIVIDER,
@@ -79,9 +70,7 @@ function buildCategoryView(
     const aliases = entry.command.aliases?.length
       ? ` _( ${escapeMarkdown(entry.command.aliases.join(', '))} )_`
       : '';
-    lines.push(
-      `${commandEmoji(entry.command.name)} \`/${entry.command.name}\`${aliases}`,
-    );
+    lines.push(`${commandEmoji(entry.command.name)} \`/${entry.command.name}\`${aliases}`);
     if (entry.command.description) {
       lines.push(`   ${escapeMarkdown(entry.command.description)}`);
     }
@@ -92,9 +81,7 @@ function buildCategoryView(
   return lines.join('\n');
 }
 
-function categoryButtons(
-  byCategory: Map<FeatureCategory, RegisteredCommand[]>,
-): ReplyButton[][] {
+function categoryButtons(byCategory: Map<FeatureCategory, RegisteredCommand[]>): ReplyButton[][] {
   const cats = [...byCategory.keys()];
   const rows: ReplyButton[][] = [];
   for (let i = 0; i < cats.length; i += 2) {
@@ -122,18 +109,23 @@ function categoryButtons(
   return rows;
 }
 
-function commandButtons(
-  list: RegisteredCommand[],
-  category: FeatureCategory,
-): ReplyButton[][] {
+function commandButtons(list: RegisteredCommand[], category: FeatureCategory): ReplyButton[][] {
   const rows: ReplyButton[][] = [];
   const limited = list.slice(0, 14);
   for (let i = 0; i < limited.length; i += 2) {
     const a = limited[i];
     const b = limited[i + 1];
     const row: ReplyButton[] = [];
-    if (a) row.push({ label: `${commandEmoji(a.command.name)} ${a.command.name}`, command: a.command.name });
-    if (b) row.push({ label: `${commandEmoji(b.command.name)} ${b.command.name}`, command: b.command.name });
+    if (a)
+      row.push({
+        label: `${commandEmoji(a.command.name)} ${a.command.name}`,
+        command: a.command.name,
+      });
+    if (b)
+      row.push({
+        label: `${commandEmoji(b.command.name)} ${b.command.name}`,
+        command: b.command.name,
+      });
     rows.push(row);
   }
   rows.push([

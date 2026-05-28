@@ -42,7 +42,10 @@ interface MediaItem {
   size?: number;
 }
 
-function pickMedia(items: MediaItem[], preference: 'video' | 'audio' | 'image'): MediaItem | undefined {
+function pickMedia(
+  items: MediaItem[],
+  preference: 'video' | 'audio' | 'image',
+): MediaItem | undefined {
   const exact = items.find((item) => item.type === preference && (item.url ?? item.hd ?? item.sd));
   if (exact) return exact;
   return items.find((item) => Boolean(item.url ?? item.hd ?? item.sd));
@@ -175,7 +178,9 @@ function normalizeSfile(payload: unknown): DownloaderResult {
   const data = ensureSuccess<SfileData>(payload, '/api/downloader/sfile');
   const url = data.download_url ?? data.url;
   if (!url) {
-    throw new ProviderError('covenant', '/api/downloader/sfile', 'parse', { detail: 'no media url' });
+    throw new ProviderError('covenant', '/api/downloader/sfile', 'parse', {
+      detail: 'no media url',
+    });
   }
   return DownloaderResultSchema.parse({
     type: 'document',

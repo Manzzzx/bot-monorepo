@@ -33,23 +33,14 @@ export class ProviderHub {
     service: DownloaderService,
     query: DownloadQuery,
   ): Promise<TaggedResult<DownloaderResult>> {
-    return this.dispatch<DownloaderResult>(
-      'download',
-      service,
-      query,
-      (provider) => Boolean(provider.capabilities.downloader[service]),
+    return this.dispatch<DownloaderResult>('download', service, query, (provider) =>
+      Boolean(provider.capabilities.downloader[service]),
     );
   }
 
-  stalk(
-    service: StalkerService,
-    query: StalkQuery,
-  ): Promise<TaggedResult<StalkerResult>> {
-    return this.dispatch<StalkerResult>(
-      'stalk',
-      service,
-      query,
-      (provider) => Boolean(provider.capabilities.stalker[service]),
+  stalk(service: StalkerService, query: StalkQuery): Promise<TaggedResult<StalkerResult>> {
+    return this.dispatch<StalkerResult>('stalk', service, query, (provider) =>
+      Boolean(provider.capabilities.stalker[service]),
     );
   }
 

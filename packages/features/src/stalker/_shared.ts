@@ -1,9 +1,4 @@
-import type {
-  AppStalkerResult,
-  Command,
-  Feature,
-  MessageCtx,
-} from '@bot/contracts';
+import type { AppStalkerResult, Command, Feature, MessageCtx } from '@bot/contracts';
 import { reply } from '@bot/contracts';
 import { requireArgs } from '@bot/core';
 import { appFromCtx } from '../general/_registry.js';
@@ -110,16 +105,14 @@ function formatExtra(extra: Record<string, unknown> | undefined): string[] {
   for (const [key, value] of Object.entries(extra)) {
     if (value === null || value === undefined || value === '') continue;
     if (typeof value === 'number') lines.push(`• ${fieldLabel(key)}: ${formatNumber(value)}`);
-    else if (typeof value === 'boolean') lines.push(`• ${fieldLabel(key)}: ${value ? 'ya' : 'tidak'}`);
+    else if (typeof value === 'boolean')
+      lines.push(`• ${fieldLabel(key)}: ${value ? 'ya' : 'tidak'}`);
     else lines.push(`• ${fieldLabel(key)}: ${truncate(String(value), 200)}`);
   }
   return lines;
 }
 
-export function buildStalkerCaption(
-  result: AppStalkerResult,
-  header: string,
-): string {
+export function buildStalkerCaption(result: AppStalkerResult, header: string): string {
   const lines = [header];
   const verifiedBadge = result.verified ? ' ✅' : '';
   const privateBadge = result.private ? ' 🔒' : '';
@@ -133,8 +126,10 @@ export function buildStalkerCaption(
   } else {
     lines.push('');
   }
-  if (typeof result.followers === 'number') lines.push(`👥 Followers: ${formatNumber(result.followers)}`);
-  if (typeof result.following === 'number') lines.push(`➡️ Following: ${formatNumber(result.following)}`);
+  if (typeof result.followers === 'number')
+    lines.push(`👥 Followers: ${formatNumber(result.followers)}`);
+  if (typeof result.following === 'number')
+    lines.push(`➡️ Following: ${formatNumber(result.following)}`);
   if (typeof result.posts === 'number') lines.push(`📦 Posts: ${formatNumber(result.posts)}`);
   const extraLines = formatExtra(result.extra);
   if (extraLines.length) {

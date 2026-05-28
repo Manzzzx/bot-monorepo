@@ -103,7 +103,12 @@ export function createTeleAdapter(options: TeleAdapterOptions): TeleAdapter {
     platform: PLATFORM,
     async sendMessage(chatId: string, text: string, opts?: ReplyOpts): Promise<void> {
       const keyboard = buildInlineKeyboard(opts?.buttons);
-      const parseMode = opts?.parseMode === 'markdown' ? 'Markdown' : opts?.parseMode === 'html' ? 'HTML' : undefined;
+      const parseMode =
+        opts?.parseMode === 'markdown'
+          ? 'Markdown'
+          : opts?.parseMode === 'html'
+            ? 'HTML'
+            : undefined;
       await app.rateLimit.outbound(PLATFORM, chatId).schedule(async () => {
         if (opts?.media && 'buffer' in opts.media) {
           const grammy = await import('grammy');
@@ -155,7 +160,10 @@ export function createTeleAdapter(options: TeleAdapterOptions): TeleAdapter {
         adminCache.set(chatId, userId, isAdmin);
         return isAdmin;
       } catch (error) {
-        logger.warn({ err: error, status: 'rejected', chatId }, 'Telegram isGroupAdmin lookup failed');
+        logger.warn(
+          { err: error, status: 'rejected', chatId },
+          'Telegram isGroupAdmin lookup failed',
+        );
         return false;
       }
     },

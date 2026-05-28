@@ -75,12 +75,7 @@ export const reminderRepo = {
     });
   },
 
-  incrementAttempt(
-    prisma: PrismaRepoClient,
-    id: string,
-    error: unknown,
-    nextDueAt?: Date,
-  ) {
+  incrementAttempt(prisma: PrismaRepoClient, id: string, error: unknown, nextDueAt?: Date) {
     return prisma.reminder.update({
       where: { id },
       data: {

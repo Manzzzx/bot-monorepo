@@ -14,7 +14,10 @@ const urlPattern = /(?:https?:\/\/|www\.|\b[a-z0-9-]+(?:\.[a-z0-9-]+)+\b)/i;
 function toggleButtons(current: boolean): ReplyButton[][] {
   return [
     [
-      { label: current ? '🔕 Disable' : '🔔 Enable', command: `antilink ${current ? 'off' : 'on'}` },
+      {
+        label: current ? '🔕 Disable' : '🔔 Enable',
+        command: `antilink ${current ? 'off' : 'on'}`,
+      },
     ],
   ];
 }

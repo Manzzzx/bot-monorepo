@@ -1,5 +1,10 @@
 import type { AppContext, Feature, FeatureCategory, Middleware } from '@bot/contracts';
-import { FeatureConflictError, requireGroupAdmin, requireOwner, UnknownCategoryError } from '@bot/core';
+import {
+  FeatureConflictError,
+  requireGroupAdmin,
+  requireOwner,
+  UnknownCategoryError,
+} from '@bot/core';
 import antiLinkFeature from './group/antilink.js';
 import kickFeature from './group/kick.js';
 import muteFeature from './group/mute.js';

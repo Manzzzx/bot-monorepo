@@ -50,11 +50,9 @@ function normalizeInstagram(payload: unknown): StalkerResult {
   }
   return StalkerResultSchema.parse({
     username,
-    ...(data.full_name ?? data.fullName
-      ? { displayName: data.full_name ?? data.fullName }
-      : {}),
+    ...((data.full_name ?? data.fullName) ? { displayName: data.full_name ?? data.fullName } : {}),
     ...(data.biography ? { bio: data.biography } : {}),
-    ...(data.profile_pic_url ?? data.profile_pic
+    ...((data.profile_pic_url ?? data.profile_pic)
       ? { avatarUrl: data.profile_pic_url ?? data.profile_pic }
       : {}),
     ...(typeof data.is_verified === 'boolean' ? { verified: data.is_verified } : {}),
@@ -119,9 +117,7 @@ function normalizeTiktok(payload: unknown): StalkerResult {
       ? { following: data.stats.followingCount }
       : {}),
     ...(typeof data.stats?.videoCount === 'number' ? { posts: data.stats.videoCount } : {}),
-    ...(data.stats
-      ? { extra: { heartCount: data.stats.heartCount ?? 0 } }
-      : {}),
+    ...(data.stats ? { extra: { heartCount: data.stats.heartCount ?? 0 } } : {}),
   });
 }
 
@@ -224,7 +220,7 @@ function normalizeThreads(payload: unknown): StalkerResult {
     username,
     ...(data.name ? { displayName: data.name } : {}),
     ...(data.bio ? { bio: data.bio } : {}),
-    ...(data.hd_profile_picture ?? data.profile_picture
+    ...((data.hd_profile_picture ?? data.profile_picture)
       ? { avatarUrl: data.hd_profile_picture ?? data.profile_picture }
       : {}),
     ...(typeof data.is_verified === 'boolean' ? { verified: data.is_verified } : {}),
@@ -263,9 +259,7 @@ function normalizePinterest(payload: unknown): StalkerResult {
     ...(typeof data.stats?.following === 'number' ? { following: data.stats.following } : {}),
     ...(typeof data.stats?.pins === 'number' ? { posts: data.stats.pins } : {}),
     ...(data.profile_url ? { url: data.profile_url } : {}),
-    ...(typeof data.stats?.boards === 'number'
-      ? { extra: { boards: data.stats.boards } }
-      : {}),
+    ...(typeof data.stats?.boards === 'number' ? { extra: { boards: data.stats.boards } } : {}),
   });
 }
 

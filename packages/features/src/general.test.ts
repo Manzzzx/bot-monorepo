@@ -19,11 +19,7 @@ function command(feature: Feature, name: string): Command {
   return found;
 }
 
-function entry(
-  category: FeatureCategory,
-  name: string,
-  aliases: string[] = [],
-): RegisteredCommand {
+function entry(category: FeatureCategory, name: string, aliases: string[] = []): RegisteredCommand {
   return {
     command: {
       name,

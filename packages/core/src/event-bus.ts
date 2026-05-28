@@ -1,10 +1,4 @@
-import type {
-  AppContext,
-  EventBus,
-  EventHandler,
-  EventName,
-  EventPayloads,
-} from '@bot/contracts';
+import type { AppContext, EventBus, EventHandler, EventName, EventPayloads } from '@bot/contracts';
 import { BotError } from './errors.js';
 
 type AnyHandler = EventHandler<EventName>;
@@ -40,10 +34,7 @@ export class InMemoryEventBus implements EventBus {
     );
     for (const result of results) {
       if (result.status === 'rejected') {
-        app.logger.error(
-          { err: result.reason, event, status: 'error' },
-          'Event handler rejected',
-        );
+        app.logger.error({ err: result.reason, event, status: 'error' }, 'Event handler rejected');
       }
     }
   }

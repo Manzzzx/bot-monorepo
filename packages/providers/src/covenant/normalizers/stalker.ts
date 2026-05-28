@@ -53,7 +53,7 @@ function normalizeInstagram(payload: unknown): StalkerResult {
     username,
     ...(data.full_name ? { displayName: data.full_name } : {}),
     ...(data.biography ? { bio: data.biography } : {}),
-    ...(data.profile_pic ?? data.profile_pic_thumb
+    ...((data.profile_pic ?? data.profile_pic_thumb)
       ? { avatarUrl: data.profile_pic ?? data.profile_pic_thumb }
       : {}),
     ...(typeof data.flags?.is_verified === 'boolean' ? { verified: data.flags.is_verified } : {}),

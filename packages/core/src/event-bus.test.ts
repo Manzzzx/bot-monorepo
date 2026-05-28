@@ -13,7 +13,9 @@ describe('InMemoryEventBus', () => {
       seen.push(payload, currentApp);
     });
 
-    await bus.emit('message', { text: 'hi' } as unknown as Parameters<typeof bus.emit<'message'>>[1]);
+    await bus.emit('message', { text: 'hi' } as unknown as Parameters<
+      typeof bus.emit<'message'>
+    >[1]);
 
     expect(seen).toEqual([{ text: 'hi' }, app]);
   });

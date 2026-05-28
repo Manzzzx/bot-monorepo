@@ -90,10 +90,7 @@ export class SchedulerImpl implements Scheduler {
         );
       }
     } catch (error) {
-      this.app.logger.error(
-        { err: error, status: 'error' },
-        'Scheduler stuck recovery failed',
-      );
+      this.app.logger.error({ err: error, status: 'error' }, 'Scheduler stuck recovery failed');
     }
   }
 
@@ -106,12 +103,14 @@ export class SchedulerImpl implements Scheduler {
     const delay = Math.max(0, at.getTime() - Date.now());
     const timeout = this.timer.setTimeout(() => {
       this.pending.delete(key);
-      void Promise.resolve(this.app.bus.emit('reminder.fire', payload as { id: string })).catch((error: unknown) => {
-        this.app.logger.error(
-          { err: error, reminderKey: key, status: 'error' },
-          'Scheduled reminder emit failed',
-        );
-      });
+      void Promise.resolve(this.app.bus.emit('reminder.fire', payload as { id: string })).catch(
+        (error: unknown) => {
+          this.app.logger.error(
+            { err: error, reminderKey: key, status: 'error' },
+            'Scheduled reminder emit failed',
+          );
+        },
+      );
     }, delay);
 
     this.pending.set(key, { timeout, key });

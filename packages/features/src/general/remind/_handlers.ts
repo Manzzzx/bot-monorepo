@@ -69,11 +69,9 @@ export async function createReminder(ctx: MessageCtx): Promise<void> {
       { label: '✖ Cancel', command: `cancelreminder ${reminder.id}` },
     ],
   ];
-  await reply(
-    ctx,
-    `Reminder set (${reminder.id}) for ${formatDueAt(dueAt)}: ${parsed.text}`,
-    { buttons },
-  );
+  await reply(ctx, `Reminder set (${reminder.id}) for ${formatDueAt(dueAt)}: ${parsed.text}`, {
+    buttons,
+  });
 }
 
 export async function listReminders(ctx: MessageCtx): Promise<void> {

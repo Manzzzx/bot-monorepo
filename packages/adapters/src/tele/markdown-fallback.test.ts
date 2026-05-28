@@ -15,8 +15,12 @@ function makeLogger(): Logger {
 
 describe('isMarkdownParseError', () => {
   it('matches Telegram parse-error envelope', () => {
-    expect(isMarkdownParseError({ error_code: 400, description: "can't parse entities" })).toBe(true);
-    expect(isMarkdownParseError({ error_code: 400, description: 'Bad Request: entity at byte 5' })).toBe(true);
+    expect(isMarkdownParseError({ error_code: 400, description: "can't parse entities" })).toBe(
+      true,
+    );
+    expect(
+      isMarkdownParseError({ error_code: 400, description: 'Bad Request: entity at byte 5' }),
+    ).toBe(true);
   });
   it('rejects unrelated 400s', () => {
     expect(isMarkdownParseError({ error_code: 400, description: 'chat not found' })).toBe(false);
@@ -41,18 +45,11 @@ describe('sendWithMarkdownFallback', () => {
 
   it('retries without parse_mode on markdown parse error', async () => {
     const parseError = { error_code: 400, description: "can't parse entities at byte 12" };
-    const send = vi
-      .fn()
-      .mockRejectedValueOnce(parseError)
-      .mockResolvedValueOnce(undefined);
+    const send = vi.fn().mockRejectedValueOnce(parseError).mockResolvedValueOnce(undefined);
     const logger = makeLogger();
-    await sendWithMarkdownFallback(
-      send,
-      { parse_mode: 'Markdown', other: 1 },
-      'Markdown',
-      logger,
-      { chatId: 'c1' },
-    );
+    await sendWithMarkdownFallback(send, { parse_mode: 'Markdown', other: 1 }, 'Markdown', logger, {
+      chatId: 'c1',
+    });
     expect(send).toHaveBeenCalledTimes(2);
     expect(send.mock.calls[1]?.[0]).toEqual({ other: 1 });
     expect(logger.warn).toHaveBeenCalledOnce();
@@ -70,9 +67,9 @@ describe('sendWithMarkdownFallback', () => {
   it('rethrows when no parseMode set even on parse error', async () => {
     const parseError = { error_code: 400, description: 'parse failed' };
     const send = vi.fn().mockRejectedValueOnce(parseError);
-    await expect(
-      sendWithMarkdownFallback(send, {}, undefined, makeLogger()),
-    ).rejects.toBe(parseError);
+    await expect(sendWithMarkdownFallback(send, {}, undefined, makeLogger())).rejects.toBe(
+      parseError,
+    );
     expect(send).toHaveBeenCalledTimes(1);
   });
 });

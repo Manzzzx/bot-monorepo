@@ -11,7 +11,6 @@ import {
 
 const DIVIDER = '━━━━━━━━━━━━━━━━━━━━━';
 
-
 function isCategory(value: string): value is FeatureCategory {
   return ['general', 'owner', 'group', 'downloader', 'stalker'].includes(value);
 }
@@ -39,10 +38,7 @@ function buildCommandDetail(entry: RegisteredCommand): string {
   return lines.join('\n');
 }
 
-function buildCategoryHelp(
-  category: FeatureCategory,
-  entries: RegisteredCommand[],
-): string {
+function buildCategoryHelp(category: FeatureCategory, entries: RegisteredCommand[]): string {
   const lines = [
     `${categoryEmoji(category)} *${categoryTitle(category).toUpperCase()}*`,
     DIVIDER,
@@ -73,9 +69,7 @@ function buildOverview(byCategory: Map<FeatureCategory, RegisteredCommand[]>): s
     '',
   ];
   for (const [category, list] of byCategory) {
-    lines.push(
-      `${categoryEmoji(category)} *${categoryTitle(category)}* — ${list.length} command`,
-    );
+    lines.push(`${categoryEmoji(category)} *${categoryTitle(category)}* — ${list.length} command`);
   }
   return lines.join('\n');
 }
@@ -100,8 +94,16 @@ function categoryHelpButtons(
     const a = limited[i];
     const b = limited[i + 1];
     const row: ReplyButton[] = [];
-    if (a) row.push({ label: `${commandEmoji(a.command.name)} ${a.command.name}`, command: `help ${a.command.name}` });
-    if (b) row.push({ label: `${commandEmoji(b.command.name)} ${b.command.name}`, command: `help ${b.command.name}` });
+    if (a)
+      row.push({
+        label: `${commandEmoji(a.command.name)} ${a.command.name}`,
+        command: `help ${a.command.name}`,
+      });
+    if (b)
+      row.push({
+        label: `${commandEmoji(b.command.name)} ${b.command.name}`,
+        command: `help ${b.command.name}`,
+      });
     rows.push(row);
   }
   rows.push([
@@ -111,9 +113,7 @@ function categoryHelpButtons(
   return rows;
 }
 
-function overviewButtons(
-  byCategory: Map<FeatureCategory, RegisteredCommand[]>,
-): ReplyButton[][] {
+function overviewButtons(byCategory: Map<FeatureCategory, RegisteredCommand[]>): ReplyButton[][] {
   const cats = [...byCategory.keys()];
   const rows: ReplyButton[][] = [];
   for (let i = 0; i < cats.length; i += 2) {

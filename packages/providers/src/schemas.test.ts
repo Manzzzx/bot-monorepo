@@ -12,15 +12,11 @@ describe('DownloaderResultSchema', () => {
   });
 
   it('rejects invalid url', () => {
-    expect(() =>
-      DownloaderResultSchema.parse({ type: 'video', url: 'not-a-url' }),
-    ).toThrow();
+    expect(() => DownloaderResultSchema.parse({ type: 'video', url: 'not-a-url' })).toThrow();
   });
 
   it('rejects unknown type', () => {
-    expect(() =>
-      DownloaderResultSchema.parse({ type: 'foo', url: 'https://cdn/x' }),
-    ).toThrow();
+    expect(() => DownloaderResultSchema.parse({ type: 'foo', url: 'https://cdn/x' })).toThrow();
   });
 
   it('preserves optional metadata', () => {

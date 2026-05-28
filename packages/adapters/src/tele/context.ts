@@ -176,7 +176,12 @@ export function createTeleMessageCtx(
     raw: update,
     async reply(replyText: string, opts?: ReplyOpts): Promise<void> {
       const keyboard = buildInlineKeyboard(opts?.buttons);
-      const parseMode = opts?.parseMode === 'markdown' ? 'Markdown' : opts?.parseMode === 'html' ? 'HTML' : undefined;
+      const parseMode =
+        opts?.parseMode === 'markdown'
+          ? 'Markdown'
+          : opts?.parseMode === 'html'
+            ? 'HTML'
+            : undefined;
       await deps.app.rateLimit.outbound(PLATFORM, chatId).schedule(async () => {
         if (opts?.media && 'buffer' in opts.media) {
           const grammyMod = await import('grammy');
@@ -263,9 +268,7 @@ export function createTeleCallbackCtx(
   const isGroup = cb.message.chat.type === 'group' || cb.message.chat.type === 'supergroup';
   const chatType: 'private' | 'group' = isGroup ? 'group' : 'private';
   const chatName =
-    'title' in cb.message.chat &&
-    typeof cb.message.chat.title === 'string' &&
-    cb.message.chat.title
+    'title' in cb.message.chat && typeof cb.message.chat.title === 'string' && cb.message.chat.title
       ? cb.message.chat.title
       : undefined;
   const userName =
@@ -321,7 +324,12 @@ export function createTeleCallbackCtx(
     raw: update,
     async reply(replyText: string, opts?: ReplyOpts): Promise<void> {
       const keyboard = buildInlineKeyboard(opts?.buttons);
-      const parseMode = opts?.parseMode === 'markdown' ? 'Markdown' : opts?.parseMode === 'html' ? 'HTML' : undefined;
+      const parseMode =
+        opts?.parseMode === 'markdown'
+          ? 'Markdown'
+          : opts?.parseMode === 'html'
+            ? 'HTML'
+            : undefined;
       await deps.app.rateLimit.outbound(PLATFORM, chatId).schedule(async () => {
         if (opts?.media && 'buffer' in opts.media) {
           const grammyMod = await import('grammy');
@@ -354,7 +362,8 @@ export function createTeleCallbackCtx(
             if (parseMode) editOpts.parse_mode = parseMode;
             if (keyboard) editOpts.reply_markup = keyboard;
             await sendWithMarkdownFallback(
-              (opts) => update.api.editMessageText(chatId, Number(triggerMessageId), replyText, opts),
+              (opts) =>
+                update.api.editMessageText(chatId, Number(triggerMessageId), replyText, opts),
               editOpts,
               parseMode,
               childLogger,

@@ -3,7 +3,9 @@ import { reply } from '@bot/contracts';
 import { appFromCtx, ensureGroup, parseToggle, upsertGroupConfig } from './_shared.js';
 
 function toggleButtons(current: boolean): ReplyButton[][] {
-  return [[{ label: current ? '🔊 Unmute' : '🔇 Mute', command: `mute ${current ? 'off' : 'on'}` }]];
+  return [
+    [{ label: current ? '🔊 Unmute' : '🔇 Mute', command: `mute ${current ? 'off' : 'on'}` }],
+  ];
 }
 
 const muteFeature: Feature = {

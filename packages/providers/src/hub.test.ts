@@ -70,7 +70,9 @@ describe('ProviderHub.download', () => {
       http: { fetchBuffer: vi.fn() } as never,
       downloadMaxBytes: 1024,
     });
-    await expect(hub.download('tiktok', { url: 'bad' })).rejects.toMatchObject({ kind: 'validation' });
+    await expect(hub.download('tiktok', { url: 'bad' })).rejects.toMatchObject({
+      kind: 'validation',
+    });
     expect(fallback.download).not.toHaveBeenCalled();
   });
 

@@ -201,11 +201,13 @@ function buildErrLines(err: unknown, color: boolean): string {
   if (!err || typeof err !== 'object') return '';
   const stack = pickString((err as { stack?: unknown }).stack);
   if (!stack) return '';
-  const lines = stack.split('\n').slice(1, 4).map((line) => line.trim()).filter(Boolean);
+  const lines = stack
+    .split('\n')
+    .slice(1, 4)
+    .map((line) => line.trim())
+    .filter(Boolean);
   if (lines.length === 0) return '';
-  return lines
-    .map((line) => '\n' + STACK_INDENT + paint('╰─ ' + line, C.dim, color))
-    .join('');
+  return lines.map((line) => '\n' + STACK_INDENT + paint('╰─ ' + line, C.dim, color)).join('');
 }
 
 function errMessage(err: unknown): string {
@@ -234,7 +236,11 @@ export function renderLine(log: Record<string, unknown>, opts: RenderOpts): stri
 
   const baseMsg = pickString(log.msg);
   const errMsg = errMessage(log.err);
-  const msg = errMsg ? (baseMsg && baseMsg !== errMsg ? `${baseMsg} · ${errMsg}` : errMsg) : baseMsg;
+  const msg = errMsg
+    ? baseMsg && baseMsg !== errMsg
+      ? `${baseMsg} · ${errMsg}`
+      : errMsg
+    : baseMsg;
   const extras = buildExtras(log);
   const msgFull = extras ? (msg ? `${msg} · ${extras}` : extras) : msg;
 

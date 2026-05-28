@@ -82,7 +82,8 @@ const broadcastFeature: Feature = {
         }
 
         const app = appFromCtx<BroadcastDb>(ctx);
-        const where = parsed.platform === 'all' ? undefined : { where: { platform: parsed.platform } };
+        const where =
+          parsed.platform === 'all' ? undefined : { where: { platform: parsed.platform } };
         const targets = [
           ...(parsed.scope !== 'groups' ? await app.db.user.findMany(where) : []),
           ...(parsed.scope !== 'users' ? await app.db.group.findMany(where) : []),
@@ -94,12 +95,18 @@ const broadcastFeature: Feature = {
           const platform = parsePlatform(target.platform);
           if (!platform) {
             failed += 1;
-            app.logger.warn({ target, status: 'rejected' }, 'Broadcast target has unknown platform');
+            app.logger.warn(
+              { target, status: 'rejected' },
+              'Broadcast target has unknown platform',
+            );
             continue;
           }
           if (!app.adapters.has(platform)) {
             failed += 1;
-            app.logger.warn({ target, platform, status: 'rejected' }, 'Broadcast adapter not registered');
+            app.logger.warn(
+              { target, platform, status: 'rejected' },
+              'Broadcast adapter not registered',
+            );
             continue;
           }
           try {

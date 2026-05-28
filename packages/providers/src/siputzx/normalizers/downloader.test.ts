@@ -71,6 +71,8 @@ describe('siputzx downloader normalizer', () => {
   });
 
   it('throws unsupported for service without normalizer', () => {
-    expect(() => normalizeDownloader('pinterest', { status: true, data: {} })).toThrow(/unsupported/);
+    expect(() => normalizeDownloader('pinterest', { status: true, data: {} })).toThrow(
+      /unsupported/,
+    );
   });
 });

@@ -1,9 +1,4 @@
-import type {
-  AppDownloadResult,
-  Command,
-  Feature,
-  MessageCtx,
-} from '@bot/contracts';
+import type { AppDownloadResult, Command, Feature, MessageCtx } from '@bot/contracts';
 import { reply } from '@bot/contracts';
 import { requireArgs } from '@bot/core';
 import { appFromCtx } from '../general/_registry.js';
@@ -73,10 +68,7 @@ function defaultExtension(mimeType: string, fallback?: string): string {
   return fallback ?? 'bin';
 }
 
-export function buildDownloaderCaption(
-  result: AppDownloadResult,
-  header: string,
-): string {
+export function buildDownloaderCaption(result: AppDownloadResult, header: string): string {
   const lines = [header];
   if (result.author) lines.push(`👤 ${result.author}`);
   if (result.title) lines.push(`📌 ${truncate(result.title, 200)}`);
@@ -181,10 +173,7 @@ async function handleError(
   await replyError(ctx, '⚠️ Terjadi kesalahan tak terduga, coba lagi nanti.');
 }
 
-export async function runDownloader(
-  ctx: MessageCtx,
-  spec: DownloaderFeatureSpec,
-): Promise<void> {
+export async function runDownloader(ctx: MessageCtx, spec: DownloaderFeatureSpec): Promise<void> {
   const url = findUrl(ctx.args);
   if (!url) {
     await reply(ctx, `❌ Sertakan link URL. Cara pakai: \`${spec.usage}\``, { quote: true });
