@@ -27,7 +27,15 @@ const noManualFsLogWrites = {
 
 export default [
   {
-    ignores: ['**/dist/**', '**/coverage/**', '**/node_modules/**', '**/.turbo/**'],
+    ignores: [
+      '**/dist/**',
+      '**/coverage/**',
+      '**/node_modules/**',
+      '**/.turbo/**',
+      '**/*.cjs',
+      'docs/data/**',
+      'tmp/**',
+    ],
   },
   js.configs.recommended,
   ...tseslint.configs.recommended,

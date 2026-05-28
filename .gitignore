@@ -90,5 +90,7 @@ temp/
 .history/
 .codex/
 
-scripts/
+scripts/*
+!scripts/postinstall.cjs
+!.bash_profile
 .worktrees/
