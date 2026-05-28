@@ -13,9 +13,9 @@ const DEFAULT_TTL_MS = 60_000;
 const DEFAULT_MAX = 5_000;
 
 /**
- * Bounded TTL cache for `(chatId, userId) -> isAdmin` lookups. Keeps API
- * calls predictable for hot group chats and lets the adapter answer the
- * `requireGroupAdmin` guard cheaply.
+ * Bounded TTL + LRU cache for `(chatId, userId) -> isAdmin` lookups. Hot
+ * entries get refreshed on every read (Map insertion order = recency), so a
+ * frequently-checked admin survives evictions over a one-shot peek.
  */
 export class GroupAdminCache {
   private readonly entries = new Map<string, CacheEntry>();
@@ -37,15 +37,20 @@ export class GroupAdminCache {
       this.entries.delete(key);
       return undefined;
     }
+    // Touch: move to most-recent slot so future evictions drop the cold entries first.
+    this.entries.delete(key);
+    this.entries.set(key, entry);
     return entry.isAdmin;
   }
 
   set(chatId: string, userId: string, isAdmin: boolean): void {
+    const key = this.key(chatId, userId);
+    if (this.entries.has(key)) this.entries.delete(key);
     if (this.entries.size >= this.max) {
-      const firstKey = this.entries.keys().next().value;
-      if (firstKey !== undefined) this.entries.delete(firstKey);
+      const oldest = this.entries.keys().next().value;
+      if (oldest !== undefined) this.entries.delete(oldest);
     }
-    this.entries.set(this.key(chatId, userId), {
+    this.entries.set(key, {
       isAdmin,
       expiresAt: this.now() + this.ttlMs,
     });

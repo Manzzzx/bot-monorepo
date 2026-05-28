@@ -34,6 +34,18 @@ describe('GroupAdminCache', () => {
     expect(cache.get('c', 'c')).toBe(true);
   });
 
+  it('promotes hot entries on read so they survive eviction', () => {
+    const cache = new GroupAdminCache({ max: 2 });
+    cache.set('c', 'a', true);
+    cache.set('c', 'b', true);
+    // touch 'a' so it is now most-recent; 'b' becomes the eviction target
+    expect(cache.get('c', 'a')).toBe(true);
+    cache.set('c', 'c', true);
+    expect(cache.get('c', 'b')).toBeUndefined();
+    expect(cache.get('c', 'a')).toBe(true);
+    expect(cache.get('c', 'c')).toBe(true);
+  });
+
   it('invalidateChat drops entries scoped to a chat only', () => {
     const cache = new GroupAdminCache();
     cache.set('c1', 'u1', true);
