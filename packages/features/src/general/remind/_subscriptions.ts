@@ -1,6 +1,7 @@
 import type { AppContext, ReminderFirePayload } from '@bot/contracts';
 import { parsePlatform } from '@bot/contracts';
 import { reminderRepo, type PrismaRepoClient } from '@bot/db';
+import { backoffWithJitterMs } from './_backoff.js';
 
 type ReminderApp = AppContext<PrismaRepoClient>;
 
@@ -14,12 +15,6 @@ type ReminderRow = {
 };
 
 const MAX_DELIVERY_ATTEMPTS = 3;
-const RETRY_BASE_MS = 60_000;
-const RETRY_MAX_MS = 30 * 60_000;
-
-function backoffMs(attempt: number): number {
-  return Math.min(RETRY_BASE_MS * 2 ** Math.max(0, attempt - 1), RETRY_MAX_MS);
-}
 
 function idFromPayload(payload: unknown): string | null {
   if (typeof payload === 'string')
@@ -102,7 +97,7 @@ export async function fireReminder(
       return;
     }
 
-    const nextDueAt = new Date(Date.now() + backoffMs(nextAttempt));
+    const nextDueAt = new Date(Date.now() + backoffWithJitterMs(nextAttempt));
     await reminderRepo.incrementAttempt(reminderApp.db, reminder.id, error, nextDueAt);
     reminderApp.logger.warn(
       {
