@@ -21,7 +21,7 @@ function bindApp(ctx: MessageCtx, app: AppContext & Record<string, unknown>): Me
 function baseApp(overrides: Partial<AppContext> = {}, extras: Record<string, unknown> = {}) {
   return {
     config: {},
-    logger: { error: vi.fn(), info: vi.fn() },
+    logger: { error: vi.fn(), info: vi.fn(), warn: vi.fn(), debug: vi.fn() },
     bus: { emit: vi.fn(), on: vi.fn() },
     scheduler: { start: vi.fn(), stop: vi.fn(), scheduleOnce: vi.fn() },
     rateLimit: { outbound: vi.fn() },
@@ -81,5 +81,57 @@ describe('owner features', () => {
 
     expect(ctx.reply).toHaveBeenCalledWith('Shutdown requested.');
     expect(shutdown).toHaveBeenCalledWith('restart');
+  });
+
+  it('broadcast filters targets by --platform=tele flag', async () => {
+    const sender = vi.fn(async () => undefined);
+    const adapter = { platform: 'tele', sendMessage: sender };
+    const userFindMany = vi.fn(async () => [{ platform: 'tele', externalId: 'tele-u' }]);
+    const groupFindMany = vi.fn(async () => []);
+    const app = baseApp({
+      adapters: { get: vi.fn(() => adapter), has: vi.fn(() => true) },
+      db: { user: { findMany: userFindMany }, group: { findMany: groupFindMany } },
+    } as unknown as Partial<AppContext>);
+    const ctx = bindApp(
+      createMockCtx({ args: ['hi'], flags: { platform: 'tele' } }),
+      app,
+    );
+
+    await commandHandler(broadcastFeature, 'broadcast')(ctx);
+
+    expect(userFindMany).toHaveBeenCalledWith({ where: { platform: 'tele' } });
+    expect(groupFindMany).toHaveBeenCalledWith({ where: { platform: 'tele' } });
+    expect(sender).toHaveBeenCalledWith('tele-u', 'hi');
+    expect(ctx.reply).toHaveBeenCalledWith(
+      expect.stringContaining('platform=tele'),
+    );
+  });
+
+  it('broadcast counts unknown platform rows as failed and skips unregistered adapters', async () => {
+    const sender = vi.fn(async () => undefined);
+    const adapter = { platform: 'wa', sendMessage: sender };
+    const has = vi.fn((platform: string) => platform === 'wa');
+    const app = baseApp({
+      adapters: { get: vi.fn(() => adapter), has },
+      db: {
+        user: {
+          findMany: vi.fn(async () => [
+            { platform: 'wa', externalId: 'wa-u' },
+            { platform: 'tele', externalId: 'tele-u' },
+            { platform: 'bogus', externalId: 'b-1' },
+          ]),
+        },
+        group: { findMany: vi.fn(async () => []) },
+      },
+    } as unknown as Partial<AppContext>);
+    const ctx = bindApp(createMockCtx({ args: ['hello'] }), app);
+
+    await commandHandler(broadcastFeature, 'broadcast')(ctx);
+
+    expect(sender).toHaveBeenCalledTimes(1);
+    expect(sender).toHaveBeenCalledWith('wa-u', 'hello');
+    expect(ctx.reply).toHaveBeenCalledWith(
+      expect.stringContaining('sent=1, failed=2'),
+    );
   });
 });

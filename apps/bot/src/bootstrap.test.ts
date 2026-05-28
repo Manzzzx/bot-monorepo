@@ -73,4 +73,44 @@ describe('bootstrap', () => {
 
     await result.scheduler.stop();
   });
+
+  it('routes app.shutdown through the registered handler', async () => {
+    const prisma = { $disconnect: vi.fn() } as unknown as AppPrismaClient;
+    const config: BootstrapConfig = {
+      NODE_ENV: 'test',
+      TZ: 'Asia/Jakarta',
+      LOG_PII: false,
+      LOG_LEVEL: 'error',
+      LOG_DIR: 'C:/tmp',
+      LOG_NO_COLOR: true,
+      DATABASE_URL: 'file:./test.db',
+      AUTH_ENCRYPTION_KEY: 'a'.repeat(64),
+      WA_ENABLED: false,
+      WA_RATE_MIN_TIME_MS: 0,
+      TELE_ENABLED: false,
+      TELE_RATE_MIN_TIME_MS: 0,
+      PROVIDER_PRIMARY: 'siputzx',
+      PROVIDER_FALLBACK: 'covenant',
+      PROVIDER_HTTP_TIMEOUT_MS: 15000,
+      PROVIDER_RATE_MIN_TIME_MS: 250,
+      PROVIDER_MAX_CONCURRENT: 4,
+      PROVIDER_CIRCUIT_THRESHOLD: 5,
+      PROVIDER_CIRCUIT_COOLDOWN_MS: 60000,
+      PROVIDER_DOWNLOAD_MAX_BYTES: 104857600,
+    } as BootstrapConfig;
+
+    const result = await bootstrap({
+      logger: makeLogger() as unknown as BootstrapLogger,
+      prisma,
+      config,
+      startAdapters: false,
+      loadFeatures: false,
+    });
+
+    const handler = vi.fn(async () => undefined);
+    result.setShutdown(handler);
+    await result.app.shutdown?.('owner-test');
+    expect(handler).toHaveBeenCalledWith('owner-test');
+    await result.scheduler.stop();
+  });
 });
