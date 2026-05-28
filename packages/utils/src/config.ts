@@ -28,12 +28,9 @@ export function isValidTimezone(tz: string): boolean {
   }
 }
 
-const tzSchema = z
-  .string()
-  .default('Asia/Jakarta')
-  .refine(isValidTimezone, {
-    message: 'Invalid IANA timezone. Examples: Asia/Jakarta, Asia/Singapore, UTC, America/New_York.',
-  });
+const tzSchema = z.string().default('Asia/Jakarta').refine(isValidTimezone, {
+  message: 'Invalid IANA timezone. Examples: Asia/Jakarta, Asia/Singapore, UTC, America/New_York.',
+});
 
 export const ConfigSchema = z
   .object({
@@ -61,6 +58,7 @@ export const ConfigSchema = z
     PROVIDER_CIRCUIT_THRESHOLD: z.coerce.number().int().positive().default(5),
     PROVIDER_CIRCUIT_COOLDOWN_MS: z.coerce.number().int().positive().default(60000),
     PROVIDER_DOWNLOAD_MAX_BYTES: z.coerce.number().int().positive().default(104857600),
+    OWNER_EVAL_ENABLED: booleanSchema.default(false),
   })
   .superRefine((config, ctx) => {
     if (config.TELE_ENABLED && !config.TELEGRAM_BOT_TOKEN) {
@@ -80,11 +78,12 @@ export const ConfigSchema = z
   });
 
 // Compile-time guard: zod schema output must satisfy the AppConfig contract.
-type _SchemaMatchesContract = z.infer<typeof ConfigSchema> extends ContractAppConfig
-  ? ContractAppConfig extends z.infer<typeof ConfigSchema>
-    ? true
-    : false
-  : false;
+type _SchemaMatchesContract =
+  z.infer<typeof ConfigSchema> extends ContractAppConfig
+    ? ContractAppConfig extends z.infer<typeof ConfigSchema>
+      ? true
+      : false
+    : false;
 const _typeCheck: _SchemaMatchesContract = true;
 void _typeCheck;
 
@@ -96,7 +95,10 @@ export function loadConfig(env: ConfigEnv = process.env): AppConfig {
 }
 
 export function getConfigWarnings(
-  config: Pick<AppConfig, 'WA_ENABLED' | 'OWNER_WA' | 'TELE_ENABLED' | 'OWNER_TG' | 'COVENANT_API_KEY'>,
+  config: Pick<
+    AppConfig,
+    'WA_ENABLED' | 'OWNER_WA' | 'TELE_ENABLED' | 'OWNER_TG' | 'COVENANT_API_KEY'
+  >,
 ): string[] {
   const warnings: string[] = [];
 

@@ -45,10 +45,18 @@ const evalFeature: Feature = {
       usage: '/eval 1 + 1',
       async handler(ctx) {
         const app = appFromCtx(ctx);
+        if (!app.config.OWNER_EVAL_ENABLED) {
+          await reply(
+            ctx,
+            '🚫 /eval is disabled. Set OWNER_EVAL_ENABLED=true (dev hosts only). node:vm is not a security sandbox.',
+            { buttons: followUp, backTo: false },
+          );
+          return;
+        }
         if (app.config.NODE_ENV === 'production') {
           await reply(
             ctx,
-            '🚫 /eval disabled in production. node:vm is not a sandbox; refusing to run untrusted code.',
+            '🚫 /eval refuses to run in production even with OWNER_EVAL_ENABLED=true.',
             { buttons: followUp, backTo: false },
           );
           return;

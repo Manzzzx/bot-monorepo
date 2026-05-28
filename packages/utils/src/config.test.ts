@@ -47,7 +47,6 @@ describe('loadConfig', () => {
     ]);
   });
 
-
   it('accepts custom IANA timezone', () => {
     const config = loadConfig({
       AUTH_ENCRYPTION_KEY: key,
@@ -66,5 +65,19 @@ describe('loadConfig', () => {
   it('falls back to Asia/Jakarta when TZ is unset', () => {
     const config = loadConfig({ AUTH_ENCRYPTION_KEY: key, TELEGRAM_BOT_TOKEN: 'token' });
     expect(config.TZ).toBe('Asia/Jakarta');
+  });
+
+  it('defaults OWNER_EVAL_ENABLED to false', () => {
+    const config = loadConfig({ AUTH_ENCRYPTION_KEY: key, TELEGRAM_BOT_TOKEN: 'token' });
+    expect(config.OWNER_EVAL_ENABLED).toBe(false);
+  });
+
+  it('parses OWNER_EVAL_ENABLED truthy values', () => {
+    const config = loadConfig({
+      AUTH_ENCRYPTION_KEY: key,
+      TELEGRAM_BOT_TOKEN: 'token',
+      OWNER_EVAL_ENABLED: 'true',
+    });
+    expect(config.OWNER_EVAL_ENABLED).toBe(true);
   });
 });

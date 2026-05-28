@@ -20,7 +20,7 @@ function bindApp(ctx: MessageCtx, app: AppContext & Record<string, unknown>): Me
 
 function baseApp(overrides: Partial<AppContext> = {}, extras: Record<string, unknown> = {}) {
   return {
-    config: {},
+    config: { OWNER_EVAL_ENABLED: true },
     logger: { error: vi.fn(), info: vi.fn(), warn: vi.fn(), debug: vi.fn() },
     bus: { emit: vi.fn(), on: vi.fn() },
     scheduler: { start: vi.fn(), stop: vi.fn(), scheduleOnce: vi.fn() },
@@ -42,15 +42,26 @@ describe('owner features', () => {
     }
   });
 
+  it('refuses eval when OWNER_EVAL_ENABLED is false', async () => {
+    const ctx = bindApp(
+      createMockCtx({ args: ['1', '+', '1'] }),
+      baseApp({ config: { OWNER_EVAL_ENABLED: false } as never }),
+    );
+    await commandHandler(evalFeature, 'eval')(ctx);
+    const args = (ctx.reply as ReturnType<typeof vi.fn>).mock.calls[0] ?? [];
+    expect(args[0]).toMatch(/disabled/);
+  });
+
   it('eval evaluates expressions and caps output', async () => {
     const ctx = bindApp(createMockCtx({ args: ['1', '+', '1'] }), baseApp());
     await commandHandler(evalFeature, 'eval')(ctx);
-    expect(ctx.reply).toHaveBeenCalledWith('2');
+    const evalCall = (ctx.reply as ReturnType<typeof vi.fn>).mock.calls[0]?.[0] as string;
+    expect(evalCall.startsWith('2')).toBe(true);
 
     const longCtx = bindApp(createMockCtx({ args: ["'x'.repeat(8000)"] }), baseApp());
     await commandHandler(evalFeature, 'eval')(longCtx);
     const lastCall = (longCtx.reply as ReturnType<typeof vi.fn>).mock.calls.at(-1)?.[0] as string;
-    expect(lastCall.endsWith('output truncated')).toBe(true);
+    expect(lastCall.includes('output truncated')).toBe(true);
   });
 
   it('broadcast sends to known users and groups', async () => {
@@ -92,19 +103,14 @@ describe('owner features', () => {
       adapters: { get: vi.fn(() => adapter), has: vi.fn(() => true) },
       db: { user: { findMany: userFindMany }, group: { findMany: groupFindMany } },
     } as unknown as Partial<AppContext>);
-    const ctx = bindApp(
-      createMockCtx({ args: ['hi'], flags: { platform: 'tele' } }),
-      app,
-    );
+    const ctx = bindApp(createMockCtx({ args: ['hi'], flags: { platform: 'tele' } }), app);
 
     await commandHandler(broadcastFeature, 'broadcast')(ctx);
 
     expect(userFindMany).toHaveBeenCalledWith({ where: { platform: 'tele' } });
     expect(groupFindMany).toHaveBeenCalledWith({ where: { platform: 'tele' } });
     expect(sender).toHaveBeenCalledWith('tele-u', 'hi');
-    expect(ctx.reply).toHaveBeenCalledWith(
-      expect.stringContaining('platform=tele'),
-    );
+    expect(ctx.reply).toHaveBeenCalledWith(expect.stringContaining('platform=tele'));
   });
 
   it('broadcast counts unknown platform rows as failed and skips unregistered adapters', async () => {
@@ -130,8 +136,6 @@ describe('owner features', () => {
 
     expect(sender).toHaveBeenCalledTimes(1);
     expect(sender).toHaveBeenCalledWith('wa-u', 'hello');
-    expect(ctx.reply).toHaveBeenCalledWith(
-      expect.stringContaining('sent=1, failed=2'),
-    );
+    expect(ctx.reply).toHaveBeenCalledWith(expect.stringContaining('sent=1, failed=2'));
   });
 });

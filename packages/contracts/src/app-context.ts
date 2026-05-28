@@ -42,6 +42,13 @@ export interface AppConfig {
   PROVIDER_CIRCUIT_THRESHOLD: number;
   PROVIDER_CIRCUIT_COOLDOWN_MS: number;
   PROVIDER_DOWNLOAD_MAX_BYTES: number;
+  /**
+   * Master switch for the dangerous owner /eval command. Default false.
+   * node:vm is NOT a security sandbox; even with requireOwner the surface
+   * is too large to leave on by default. Flip to true only on dev hosts
+   * where the operator fully trusts every owner identity in OWNER_WA/TG.
+   */
+  OWNER_EVAL_ENABLED: boolean;
 }
 
 export interface MessageAdapter {
