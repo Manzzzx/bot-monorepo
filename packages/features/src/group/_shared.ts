@@ -1,4 +1,5 @@
 import type { AppContext, MessageCtx } from '@bot/contracts';
+import { appFromCtx as coreAppFromCtx } from '@bot/core';
 import { groupRepo, type PrismaRepoClient } from '@bot/db';
 
 export type GroupApp = AppContext<PrismaRepoClient>;
@@ -31,9 +32,7 @@ export type GroupDb = PrismaRepoClient & {
 };
 
 export function appFromCtx(ctx: MessageCtx): GroupApp {
-  const app = (ctx as GroupBoundCtx).app;
-  if (!app) throw new Error('App context unavailable.');
-  return app;
+  return coreAppFromCtx<GroupApp['db']>(ctx) as GroupApp;
 }
 
 export async function ensureGroup(app: GroupApp, ctx: MessageCtx): Promise<GroupRow> {

@@ -1,13 +1,9 @@
 import type { AppContext, MessageCtx } from '@bot/contracts';
+import { appFromCtx as coreAppFromCtx } from '@bot/core';
 
-export type OwnerApp<TDb = unknown> = AppContext<TDb> & {
-  shutdown?: (reason?: string) => Promise<void> | void;
-};
-
+export type OwnerApp<TDb = unknown> = AppContext<TDb>;
 export type OwnerBoundCtx<TDb = unknown> = MessageCtx & { app?: OwnerApp<TDb> };
 
 export function appFromCtx<TDb = unknown>(ctx: MessageCtx): OwnerApp<TDb> {
-  const app = (ctx as OwnerBoundCtx<TDb>).app;
-  if (!app) throw new Error('App context unavailable.');
-  return app;
+  return coreAppFromCtx<TDb>(ctx);
 }

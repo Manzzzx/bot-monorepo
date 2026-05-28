@@ -1,9 +1,8 @@
-import type { Feature, ReplyButton } from '@bot/contracts';
+import type { AppContext, Feature, MessageCtx, ReplyButton } from '@bot/contracts';
 import { reply } from '@bot/contracts';
 import {
   appFromCtx,
   ensureGroup,
-  isMessageCtx,
   parseToggle,
   type GroupApp,
   type GroupDb,
@@ -20,10 +19,11 @@ function toggleButtons(current: boolean): ReplyButton[][] {
   ];
 }
 
-async function antiLinkMessage(payload: unknown, app: GroupApp): Promise<void> {
-  if (!isMessageCtx(payload) || !payload.isGroup || !urlPattern.test(payload.text)) return;
+async function antiLinkMessage(payload: MessageCtx, app: AppContext): Promise<void> {
+  if (!payload.isGroup || !urlPattern.test(payload.text)) return;
+  const groupApp = app as GroupApp;
 
-  const db = app.db as GroupDb;
+  const db = groupApp.db as GroupDb;
   const group = await db.group.findUnique({
     where: { platform_externalId: { platform: payload.platform, externalId: payload.chatId } },
     include: { config: true },

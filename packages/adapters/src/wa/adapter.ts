@@ -5,6 +5,7 @@ import type { Logger } from 'pino';
 import type { AppContext, MessageAdapter, MessageCtx, Platform, ReplyOpts } from '@bot/contracts';
 import type { AppPrismaClient } from '@bot/db';
 import { makePrismaAuthState, type PrismaAuthStateHandle } from './auth-state.js';
+import { GroupAdminCache } from '../group-admin-cache.js';
 import { createWaMessageCtx, isUserMessage } from './context.js';
 
 const PLATFORM: Platform = 'wa';
@@ -21,12 +22,14 @@ export interface WaAdapter extends MessageAdapter {
   stop(): Promise<void>;
   pause(): void;
   resume(): void;
+  isGroupAdmin(chatId: string, userId: string): Promise<boolean>;
 }
 
 export function createWaAdapter(options: WaAdapterOptions): WaAdapter {
   const { app, prisma, onMessage } = options;
   const logger = app.logger.child({ adapter: 'wa' });
 
+  const adminCache = new GroupAdminCache();
   let socket: WASocket | null = null;
   let auth: PrismaAuthStateHandle | null = null;
   let started = false;
@@ -156,6 +159,28 @@ export function createWaAdapter(options: WaAdapterOptions): WaAdapter {
     if (started && !socket) void connect();
   }
 
+  async function isGroupAdmin(chatId: string, userId: string): Promise<boolean> {
+    if (!socket) return false;
+    if (!chatId.endsWith('@g.us')) return false;
+    const cached = adminCache.get(chatId, userId);
+    if (cached !== undefined) return cached;
+    try {
+      const meta = (await socket.groupMetadata(chatId)) as {
+        participants?: Array<{ id?: string; admin?: string | null }>;
+      };
+      const participants = meta.participants ?? [];
+      for (const p of participants) {
+        if (typeof p.id !== 'string') continue;
+        const isAdmin = p.admin === 'admin' || p.admin === 'superadmin';
+        adminCache.set(chatId, p.id, isAdmin);
+      }
+      return adminCache.get(chatId, userId) ?? false;
+    } catch (error) {
+      logger.warn({ err: error, status: 'rejected', chatId }, 'WA isGroupAdmin lookup failed');
+      return false;
+    }
+  }
+
   return {
     platform: PLATFORM,
     async sendMessage(chatId: string, text: string, opts?: ReplyOpts): Promise<void> {
@@ -171,6 +196,7 @@ export function createWaAdapter(options: WaAdapterOptions): WaAdapter {
     stop,
     pause,
     resume,
+    isGroupAdmin,
   };
 }
 

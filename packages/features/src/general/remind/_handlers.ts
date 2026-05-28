@@ -1,9 +1,9 @@
 import type { AppContext, MessageCtx, ReplyButton } from '@bot/contracts';
 import { reply } from '@bot/contracts';
+import { appFromCtx as coreAppFromCtx } from '@bot/core';
 import { userRepo, type PrismaRepoClient } from '@bot/db';
 
 type ReminderApp = AppContext<PrismaRepoClient>;
-type AppBoundMessageCtx = MessageCtx & { app?: ReminderApp };
 
 type DurationUnit = 's' | 'm' | 'h' | 'd';
 
@@ -15,9 +15,7 @@ const unitMs: Record<DurationUnit, number> = {
 };
 
 function appFromCtx(ctx: MessageCtx): ReminderApp {
-  const app = (ctx as AppBoundMessageCtx).app;
-  if (!app) throw new Error('App context unavailable.');
-  return app;
+  return coreAppFromCtx<PrismaRepoClient>(ctx);
 }
 
 function parseDuration(raw: string | undefined): number | null {
@@ -80,9 +78,7 @@ export async function createReminder(ctx: MessageCtx): Promise<void> {
 
 export async function listReminders(ctx: MessageCtx): Promise<void> {
   const app = appFromCtx(ctx);
-  const user = await app.db.user.findUnique({
-    where: { platform_externalId: { platform: ctx.platform, externalId: ctx.userId } },
-  });
+  const user = await userRepo.findByExternal(app.db, ctx.platform, ctx.userId);
 
   if (!user) {
     await reply(ctx, 'No pending reminders.');
@@ -127,9 +123,7 @@ export async function cancelReminder(ctx: MessageCtx): Promise<void> {
   }
 
   const app = appFromCtx(ctx);
-  const user = await app.db.user.findUnique({
-    where: { platform_externalId: { platform: ctx.platform, externalId: ctx.userId } },
-  });
+  const user = await userRepo.findByExternal(app.db, ctx.platform, ctx.userId);
 
   if (!user) {
     await reply(ctx, `Reminder not found: ${reminderId}`, { backTo: 'reminders' });

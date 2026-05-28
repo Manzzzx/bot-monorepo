@@ -1,5 +1,5 @@
 import type { AppContext, MessageCtx } from '@bot/contracts';
-import { createMockCtx } from '@bot/contracts';
+import { createMockCtx } from '@bot/contracts/testing';
 import { describe, expect, it, vi } from 'vitest';
 import antiLinkFeature from './group/antilink.js';
 import kickFeature from './group/kick.js';
@@ -28,13 +28,16 @@ function commandHandler(
 
 function eventHandler(
   feature: {
-    events?: { event: string; handler(payload: unknown, app: AppContext): Promise<void> }[];
+    events?: ReadonlyArray<{
+      event: string;
+      handler(payload: never, app: AppContext): Promise<void> | void;
+    }>;
   },
   name: string,
 ) {
   const found = feature.events?.find((event) => event.event === name);
   if (!found) throw new Error(`missing event ${name}`);
-  return found.handler;
+  return found.handler as (payload: unknown, app: AppContext) => Promise<void> | void;
 }
 
 function bindApp(ctx: MessageCtx, app: AppContext): MessageCtx {

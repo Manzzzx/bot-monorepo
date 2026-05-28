@@ -60,7 +60,7 @@ export class SchedulerImpl implements Scheduler {
       );
       for (const reminder of due) {
         try {
-          await this.app.bus.emit('reminder.fire', reminder);
+          await this.app.bus.emit('reminder.fire', reminder as { id: string });
         } catch (error) {
           this.app.logger.error(
             { err: error, reminderId: reminder.id, status: 'error' },
@@ -106,7 +106,7 @@ export class SchedulerImpl implements Scheduler {
     const delay = Math.max(0, at.getTime() - Date.now());
     const timeout = this.timer.setTimeout(() => {
       this.pending.delete(key);
-      void Promise.resolve(this.app.bus.emit('reminder.fire', payload)).catch((error: unknown) => {
+      void Promise.resolve(this.app.bus.emit('reminder.fire', payload as { id: string })).catch((error: unknown) => {
         this.app.logger.error(
           { err: error, reminderKey: key, status: 'error' },
           'Scheduled reminder emit failed',

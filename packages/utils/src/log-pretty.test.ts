@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { formatTime, maskId, renderLine } from './log-pretty.js';
 
+// eslint-disable-next-line no-control-regex
 const stripAnsi = (s: string): string => s.replace(/\u001b\[[0-9;]*m/g, '');
 
 describe('formatTime', () => {
@@ -146,6 +147,7 @@ describe('renderLine', () => {
       },
       { color: true, logPii: false, tz: 'UTC' },
     );
+    // eslint-disable-next-line no-control-regex
     expect(out).toMatch(/\u001b\[/);
   });
 });

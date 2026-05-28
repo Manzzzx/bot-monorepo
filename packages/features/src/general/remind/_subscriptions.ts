@@ -1,4 +1,5 @@
-import type { AppContext, Platform } from '@bot/contracts';
+import type { AppContext, ReminderFirePayload } from '@bot/contracts';
+import { parsePlatform } from '@bot/contracts';
 import { reminderRepo, type PrismaRepoClient } from '@bot/db';
 
 type ReminderApp = AppContext<PrismaRepoClient>;
@@ -9,15 +10,15 @@ type ReminderRow = {
   platform: string;
   text: string;
   status?: string;
+  attemptCount?: number;
 };
 
-type ReminderPayload = {
-  id?: unknown;
-  reminderId?: unknown;
-};
+const MAX_DELIVERY_ATTEMPTS = 3;
+const RETRY_BASE_MS = 60_000;
+const RETRY_MAX_MS = 30 * 60_000;
 
-function platformOf(value: string): Platform {
-  return value === 'tele' ? 'tele' : 'wa';
+function backoffMs(attempt: number): number {
+  return Math.min(RETRY_BASE_MS * 2 ** Math.max(0, attempt - 1), RETRY_MAX_MS);
 }
 
 function idFromPayload(payload: unknown): string | null {
@@ -25,7 +26,7 @@ function idFromPayload(payload: unknown): string | null {
     return payload.startsWith('reminder:') ? payload.slice(9) : payload;
   if (typeof payload !== 'object' || payload === null) return null;
 
-  const candidate = payload as ReminderPayload;
+  const candidate = payload as { id?: unknown; reminderId?: unknown };
   if (typeof candidate.id === 'string') return candidate.id;
   if (typeof candidate.reminderId === 'string') return candidate.reminderId;
   return null;
@@ -61,7 +62,10 @@ async function resolveReminder(payload: unknown, app: ReminderApp): Promise<Remi
   return loadClaimed(id, app);
 }
 
-export async function fireReminder(payload: unknown, app: AppContext): Promise<void> {
+export async function fireReminder(
+  payload: ReminderFirePayload | unknown,
+  app: AppContext,
+): Promise<void> {
   const reminderApp = app as ReminderApp;
   const id = reminderIdOf(payload);
   if (!id) return;
@@ -72,13 +76,43 @@ export async function fireReminder(payload: unknown, app: AppContext): Promise<v
     return;
   }
 
+  const platform = parsePlatform(reminder.platform);
+  if (!platform) {
+    reminderApp.logger.warn(
+      { reminderId: reminder.id, platform: reminder.platform, status: 'rejected' },
+      'Reminder skip: unknown platform',
+    );
+    await reminderRepo.markFailed(reminderApp.db, reminder.id, new Error('unknown platform'));
+    return;
+  }
+
   try {
     await reminderApp.adapters
-      .get(platformOf(reminder.platform))
+      .get(platform)
       .sendMessage(reminder.chatId, `⏰ Reminder: ${reminder.text}`);
     await reminderRepo.markDone(reminderApp.db, reminder.id);
   } catch (error) {
-    await reminderRepo.markFailed(reminderApp.db, reminder.id, error);
-    reminderApp.logger.error({ err: error, reminderId: reminder.id }, 'Reminder delivery failed');
+    const nextAttempt = (reminder.attemptCount ?? 0) + 1;
+    if (nextAttempt >= MAX_DELIVERY_ATTEMPTS) {
+      await reminderRepo.markFailed(reminderApp.db, reminder.id, error);
+      reminderApp.logger.error(
+        { err: error, reminderId: reminder.id, attempt: nextAttempt, status: 'fatal' },
+        'Reminder delivery failed permanently',
+      );
+      return;
+    }
+
+    const nextDueAt = new Date(Date.now() + backoffMs(nextAttempt));
+    await reminderRepo.incrementAttempt(reminderApp.db, reminder.id, error, nextDueAt);
+    reminderApp.logger.warn(
+      {
+        err: error,
+        reminderId: reminder.id,
+        attempt: nextAttempt,
+        nextDueAt: nextDueAt.toISOString(),
+        status: 'recoverable',
+      },
+      'Reminder delivery failed; scheduled retry with backoff',
+    );
   }
 }

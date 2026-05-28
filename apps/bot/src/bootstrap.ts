@@ -78,6 +78,7 @@ export interface BootstrapResult {
     tele: TeleAdapter | null;
   };
   shutdownTasks: Array<() => Promise<void> | void>;
+  setShutdown(handler: (reason?: string) => Promise<void> | void): void;
 }
 
 export async function bootstrap(options: BootstrapOptions = {}): Promise<BootstrapResult> {
@@ -134,6 +135,7 @@ export async function bootstrap(options: BootstrapOptions = {}): Promise<Bootstr
     logger: logger.child({ component: 'providers' }),
   });
 
+  let triggerShutdown: ((reason?: string) => Promise<void> | void) | undefined;
   const app: AppContext<AppPrismaClient> = {
     config: config as AppContext['config'],
     logger,
@@ -144,6 +146,7 @@ export async function bootstrap(options: BootstrapOptions = {}): Promise<Bootstr
     registry,
     adapters,
     providers,
+    shutdown: (reason?: string) => triggerShutdown?.(reason),
   };
 
   bus.bindApp(app);
@@ -197,5 +200,8 @@ export async function bootstrap(options: BootstrapOptions = {}): Promise<Bootstr
     prisma,
     adapters: { wa: waAdapter, tele: teleAdapter },
     shutdownTasks,
+    setShutdown(handler) {
+      triggerShutdown = handler;
+    },
   };
 }

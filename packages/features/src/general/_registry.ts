@@ -1,11 +1,10 @@
 import type { AppContext, FeatureCategory, MessageCtx, RegisteredCommand } from '@bot/contracts';
+import { appFromCtx as coreAppFromCtx } from '@bot/core';
 
 export type AppBoundMessageCtx<TDb = unknown> = MessageCtx & { app?: AppContext<TDb> };
 
 export function appFromCtx<TDb = unknown>(ctx: MessageCtx): AppContext<TDb> {
-  const app = (ctx as AppBoundMessageCtx<TDb>).app;
-  if (!app) throw new Error('App context unavailable.');
-  return app;
+  return coreAppFromCtx<TDb>(ctx);
 }
 
 export function isOwner(ctx: MessageCtx, app: Pick<AppContext, 'config'>): boolean {
@@ -94,7 +93,7 @@ export function visibleCommands(
     .filter((entry) => canSeeCommand(entry, ctx, app))
     .sort((left, right) => left.command.name.localeCompare(right.command.name));
 }
-const MARKDOWN_ESCAPE = /([_*`[\]])/g;
+const MARKDOWN_ESCAPE = /([_*[\]()~>#+\-=|{}.!\\])/g;
 
 /**
  * Escape Telegram legacy Markdown specials in untrusted content.

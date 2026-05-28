@@ -75,13 +75,19 @@ export const reminderRepo = {
     });
   },
 
-  incrementAttempt(prisma: PrismaRepoClient, id: string, error: unknown) {
+  incrementAttempt(
+    prisma: PrismaRepoClient,
+    id: string,
+    error: unknown,
+    nextDueAt?: Date,
+  ) {
     return prisma.reminder.update({
       where: { id },
       data: {
         status: 'pending',
         attemptCount: { increment: 1 },
         lastError: errorText(error),
+        ...(nextDueAt ? { dueAt: nextDueAt } : {}),
       },
     });
   },

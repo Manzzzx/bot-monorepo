@@ -26,7 +26,7 @@ export function errorBoundary(app: Pick<AppContext, 'logger'>): Middleware {
       );
 
       try {
-        await ctx.reply(`Internal error. Trace: ${ctx.traceId}`);
+        await ctx.reply(`Internal error. Please try again later.`);
       } catch (replyError) {
         app.logger.warn(
           { err: replyError, status: 'rejected', traceId: ctx.traceId },

@@ -1,4 +1,5 @@
-import { createMockCtx, type AppContext, type Feature, type MessageCtx } from '@bot/contracts';
+import { type AppContext, type Feature, type MessageCtx } from '@bot/contracts';
+import { createMockCtx } from '@bot/contracts/testing';
 import type { Logger } from 'pino';
 import { describe, expect, it, vi } from 'vitest';
 import { CommandRegistryImpl } from './command-registry.js';
@@ -165,6 +166,6 @@ describe('createRouter', () => {
       expect.objectContaining({ status: 'error', traceId: 'trace-boom' }),
       'Unhandled bot error',
     );
-    expect(ctx.reply).toHaveBeenCalledWith(expect.stringContaining('trace-boom'));
+    expect(ctx.reply).toHaveBeenCalledWith('Internal error. Please try again later.');
   });
 });

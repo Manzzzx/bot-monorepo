@@ -1,5 +1,5 @@
 import type { AppContext, Feature, FeatureCategory, Middleware } from '@bot/contracts';
-import { FeatureConflictError, requireGroup, requireOwner, UnknownCategoryError } from '@bot/core';
+import { FeatureConflictError, requireGroupAdmin, requireOwner, UnknownCategoryError } from '@bot/core';
 import antiLinkFeature from './group/antilink.js';
 import kickFeature from './group/kick.js';
 import muteFeature from './group/mute.js';
@@ -36,7 +36,7 @@ import broadcastFeature from './owner/broadcast.js';
 import evalFeature from './owner/eval.js';
 import shutdownFeature from './owner/shutdown.js';
 
-type AutoGuardLabel = 'none' | 'requireOwner' | 'requireGroup+requireOwner';
+type AutoGuardLabel = 'none' | 'requireOwner' | 'requireGroupAdmin';
 
 export interface FeatureRegistryEntry {
   baseName: string;
@@ -120,8 +120,7 @@ function isCategory(value: string): value is FeatureCategory {
 
 function guardFor(category: FeatureCategory): { guards: Middleware[]; label: AutoGuardLabel } {
   if (category === 'owner') return { guards: [requireOwner()], label: 'requireOwner' };
-  if (category === 'group')
-    return { guards: [requireGroup(), requireOwner()], label: 'requireGroup+requireOwner' };
+  if (category === 'group') return { guards: [requireGroupAdmin()], label: 'requireGroupAdmin' };
   return { guards: [], label: 'none' };
 }
 
@@ -187,8 +186,9 @@ export async function loadFeatures(
     const feature = normalizeFeature(source.feature, source);
     app.registry.register(feature, source.category);
 
-    for (const subscription of feature.events ?? [])
-      app.bus.on(subscription.event, subscription.handler);
+    for (const subscription of feature.events ?? []) {
+      app.bus.on(subscription.event, subscription.handler as Parameters<typeof app.bus.on>[1]);
+    }
     await feature.onLoad?.(app);
 
     app.logger.info(

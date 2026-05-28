@@ -10,7 +10,15 @@ function jsonResponse(statusCode: number, body: unknown) {
   return {
     statusCode,
     headers: { 'content-type': 'application/json' },
-    body: { json: async () => body },
+    body: asyncBuffers([Buffer.from(JSON.stringify(body), 'utf8')]),
+  };
+}
+
+function badJsonResponse(statusCode: number) {
+  return {
+    statusCode,
+    headers: { 'content-type': 'application/json' },
+    body: asyncBuffers([Buffer.from('not-json{', 'utf8')]),
   };
 }
 
@@ -89,17 +97,28 @@ describe('HttpClient.get', () => {
   });
 
   it('classifies parse errors as ProviderError parse', async () => {
+    requestMock.mockResolvedValueOnce(badJsonResponse(200));
+    const http = new HttpClient({ timeoutMs: 1000, minTimeMs: 0, maxConcurrent: 4 });
+    await expect(http.get('siputzx', 'https://api/x')).rejects.toMatchObject({ kind: 'parse' });
+  });
+
+  it('caps response body at responseMaxBytes', async () => {
+    const big = Buffer.alloc(100_000, 0x61);
     requestMock.mockResolvedValueOnce({
       statusCode: 200,
       headers: { 'content-type': 'application/json' },
-      body: {
-        json: async () => {
-          throw new Error('bad json');
-        },
-      },
+      body: asyncBuffers([big]),
     });
-    const http = new HttpClient({ timeoutMs: 1000, minTimeMs: 0, maxConcurrent: 4 });
-    await expect(http.get('siputzx', 'https://api/x')).rejects.toMatchObject({ kind: 'parse' });
+    const http = new HttpClient({
+      timeoutMs: 1000,
+      minTimeMs: 0,
+      maxConcurrent: 4,
+      responseMaxBytes: 1024,
+    });
+    await expect(http.get('siputzx', 'https://api/x')).rejects.toMatchObject({
+      kind: 'validation',
+      detail: 'response_too_large',
+    });
   });
 
   it('wraps unexpected errors as http kind', async () => {
